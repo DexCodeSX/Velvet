@@ -179,11 +179,24 @@ local gui = create("ScreenGui", {
     ResetOnSpawn = false,
     ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
     IgnoreGuiInset = true,
-    DisplayOrder = 999
+    DisplayOrder = 500
 })
 pcall(function() gui.Parent = gethui() end)
 if not gui.Parent then
     gui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
+end
+
+-- notifications live in a separate screengui so they always float above the window
+local notifGui = create("ScreenGui", {
+    Name = "VelvetNotifs",
+    ResetOnSpawn = false,
+    ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+    IgnoreGuiInset = true,
+    DisplayOrder = 10000,
+})
+pcall(function() notifGui.Parent = gethui() end)
+if not notifGui.Parent then
+    notifGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
 end
 
 -- notification container (top right)
@@ -192,7 +205,7 @@ local notifHolder = create("Frame", {
     Size = UDim2.new(0, 300, 1, 0),
     Position = UDim2.new(1, -310, 0, 10),
     BackgroundTransparency = 1,
-    Parent = gui,
+    Parent = notifGui,
     Children = {
         create("UIListLayout", {
             SortOrder = Enum.SortOrder.LayoutOrder,
@@ -2882,10 +2895,10 @@ function Velvet:Destroy()
         end
     end
 
-    -- also blow away any leftover gui under gethui named Velvet
+    -- also blow away any leftover gui under gethui named Velvet/VelvetUI/VelvetNotifs
     local hui = (gethui and gethui()) or game:GetService("CoreGui")
     for _, g in pairs(hui:GetChildren()) do
-        if g.Name == "Velvet" then
+        if g.Name == "Velvet" or g.Name == "VelvetUI" or g.Name == "VelvetNotifs" then
             pcall(function() g:Destroy() end)
         end
     end
