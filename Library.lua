@@ -238,6 +238,254 @@ end
 ------------------------------------------------------------------------
 -- WINDOW
 ------------------------------------------------------------------------
+------------------------------------------------------------------------
+-- KEY SYSTEM
+------------------------------------------------------------------------
+function Velvet:KeySystem(opts)
+    opts = opts or {}
+    local title = opts.Title or "Key System"
+    local subtitle = opts.SubTitle or "Enter your key to continue"
+    local keys = opts.Keys or {}
+    local saveName = opts.SaveKey or "VelvetKey.txt"
+    local cb = opts.Callback or function() end
+    local theme = self.Theme
+    local mobile = isMobile()
+
+    -- check saved key first
+    local savedKey = nil
+    pcall(function()
+        savedKey = readfile(saveName)
+    end)
+    if savedKey then
+        for _, k in keys do
+            if savedKey == k then
+                task.spawn(cb, true)
+                return true
+            end
+        end
+    end
+
+    local passed = false
+    local keyGui = create("Frame", {
+        Name = "VelvetKeySystem",
+        Size = UDim2.fromScale(1, 1),
+        BackgroundColor3 = Color3.new(0, 0, 0),
+        BackgroundTransparency = 0.4,
+        ZIndex = 200,
+        Parent = gui
+    })
+
+    local card = create("Frame", {
+        Size = UDim2.new(0, mobile and 320 or 340, 0, 0),
+        Position = UDim2.new(0.5, mobile and -160 or -170, 0.5, 0),
+        BackgroundColor3 = theme.Base,
+        ClipsDescendants = true,
+        ZIndex = 201,
+        Parent = keyGui
+    })
+    addCorner(card, 14)
+    addStroke(card, theme.Border, 1, 0.3)
+
+    -- accent line
+    create("Frame", {
+        Size = UDim2.new(0, 40, 0, 2),
+        Position = UDim2.new(0.5, -20, 0, 0),
+        BackgroundColor3 = theme.Accent,
+        BorderSizePixel = 0,
+        ZIndex = 210,
+        Parent = card
+    })
+
+    -- title
+    create("TextLabel", {
+        Size = UDim2.new(1, -40, 0, 20),
+        Position = UDim2.new(0, 20, 0, 20),
+        BackgroundTransparency = 1,
+        Text = title,
+        TextColor3 = theme.Text,
+        TextSize = 16,
+        Font = Enum.Font.GothamBold,
+        TextXAlignment = Enum.TextXAlignment.Center,
+        ZIndex = 210,
+        Parent = card
+    })
+
+    create("TextLabel", {
+        Size = UDim2.new(1, -40, 0, 14),
+        Position = UDim2.new(0, 20, 0, 42),
+        BackgroundTransparency = 1,
+        Text = subtitle,
+        TextColor3 = theme.TextMuted,
+        TextSize = 11,
+        Font = Enum.Font.Gotham,
+        TextXAlignment = Enum.TextXAlignment.Center,
+        ZIndex = 210,
+        Parent = card
+    })
+
+    -- input
+    local inputBg = create("Frame", {
+        Size = UDim2.new(1, -40, 0, 38),
+        Position = UDim2.new(0, 20, 0, 68),
+        BackgroundColor3 = theme.Surface,
+        BorderSizePixel = 0,
+        ZIndex = 210,
+        Parent = card
+    })
+    addCorner(inputBg, 8)
+    local keyStroke = addStroke(inputBg, theme.Border, 1, 0.5)
+
+    local keyInput = create("TextBox", {
+        Size = UDim2.new(1, -16, 1, 0),
+        Position = UDim2.new(0, 8, 0, 0),
+        BackgroundTransparency = 1,
+        Text = "",
+        PlaceholderText = "Enter key...",
+        TextColor3 = theme.Text,
+        PlaceholderColor3 = theme.TextMuted,
+        TextSize = 13,
+        Font = Enum.Font.Code,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        ClearTextOnFocus = false,
+        ZIndex = 211,
+        Parent = inputBg
+    })
+
+    keyInput.Focused:Connect(function()
+        tween(keyStroke, {Color = theme.Accent, Transparency = 0}, 0.15)
+    end)
+    keyInput.FocusLost:Connect(function()
+        tween(keyStroke, {Color = theme.Border, Transparency = 0.5}, 0.15)
+    end)
+
+    -- status label
+    local statusLabel = create("TextLabel", {
+        Size = UDim2.new(1, -40, 0, 14),
+        Position = UDim2.new(0, 20, 0, 112),
+        BackgroundTransparency = 1,
+        Text = "",
+        TextColor3 = theme.Error,
+        TextSize = 11,
+        Font = Enum.Font.Gotham,
+        TextXAlignment = Enum.TextXAlignment.Center,
+        ZIndex = 210,
+        Parent = card
+    })
+
+    -- submit button
+    local submitBtn = create("TextButton", {
+        Size = UDim2.new(1, -40, 0, 36),
+        Position = UDim2.new(0, 20, 0, 130),
+        BackgroundColor3 = theme.Accent,
+        Text = "",
+        BorderSizePixel = 0,
+        AutoButtonColor = false,
+        ZIndex = 210,
+        Parent = card
+    })
+    addCorner(submitBtn, 8)
+
+    create("TextLabel", {
+        Size = UDim2.fromScale(1, 1),
+        BackgroundTransparency = 1,
+        Text = "Verify",
+        TextColor3 = Color3.new(1, 1, 1),
+        TextSize = 13,
+        Font = Enum.Font.GothamBold,
+        ZIndex = 211,
+        Parent = submitBtn
+    })
+
+    submitBtn.MouseEnter:Connect(function()
+        tween(submitBtn, {BackgroundColor3 = theme.AccentDark}, 0.15)
+    end)
+    submitBtn.MouseLeave:Connect(function()
+        tween(submitBtn, {BackgroundColor3 = theme.Accent}, 0.15)
+    end)
+
+    -- get key link
+    if opts.GetKeyLink then
+        local linkBtn = create("TextButton", {
+            Size = UDim2.new(1, -40, 0, 28),
+            Position = UDim2.new(0, 20, 0, 174),
+            BackgroundTransparency = 1,
+            Text = "Get Key",
+            TextColor3 = theme.Accent,
+            TextSize = 12,
+            Font = Enum.Font.GothamMedium,
+            ZIndex = 210,
+            Parent = card
+        })
+        linkBtn.MouseButton1Click:Connect(function()
+            pcall(function() setclipboard(opts.GetKeyLink) end)
+            statusLabel.Text = "Link copied to clipboard!"
+            statusLabel.TextColor3 = theme.Info
+            task.delay(2, function()
+                if statusLabel.Parent then statusLabel.Text = "" end
+            end)
+        end)
+    end
+
+    local cardH = opts.GetKeyLink and 214 or 180
+
+    -- animate in
+    tween(card, {
+        Size = UDim2.new(0, mobile and 320 or 340, 0, cardH),
+        Position = UDim2.new(0.5, mobile and -160 or -170, 0.5, -cardH/2),
+    }, 0.3)
+
+    -- verify
+    local function tryKey()
+        local input = keyInput.Text
+        if input == "" then
+            statusLabel.Text = "Enter a key first"
+            statusLabel.TextColor3 = theme.Warning
+            return
+        end
+
+        local valid = false
+        for _, k in keys do
+            if input == k then valid = true break end
+        end
+
+        if valid then
+            statusLabel.Text = "Key accepted!"
+            statusLabel.TextColor3 = theme.Success
+            pcall(function() writefile(saveName, input) end)
+            passed = true
+            tween(card, {
+                Size = UDim2.new(0, mobile and 320 or 340, 0, 0),
+                Position = UDim2.new(0.5, mobile and -160 or -170, 0.5, 0),
+            }, 0.25)
+            tween(keyGui, {BackgroundTransparency = 1}, 0.3)
+            task.delay(0.3, function()
+                pcall(function() keyGui:Destroy() end)
+                task.spawn(cb, true)
+            end)
+        else
+            statusLabel.Text = "Invalid key!"
+            statusLabel.TextColor3 = theme.Error
+            -- shake
+            local orig = card.Position
+            for i = 1, 3 do
+                tween(card, {Position = orig + UDim2.new(0, 8, 0, 0)}, 0.04)
+                task.wait(0.04)
+                tween(card, {Position = orig + UDim2.new(0, -8, 0, 0)}, 0.04)
+                task.wait(0.04)
+            end
+            tween(card, {Position = orig}, 0.04)
+        end
+    end
+
+    submitBtn.MouseButton1Click:Connect(tryKey)
+    keyInput.FocusLost:Connect(function(enter)
+        if enter then tryKey() end
+    end)
+
+    -- block until done (or return immediately if caller doesn't need to wait)
+    return passed
+end
+
 function Velvet:CreateWindow(opts)
     opts = opts or {}
     local theme = self.Theme
@@ -502,24 +750,60 @@ function Velvet:CreateWindow(opts)
     end)
 
     -- floating toggle pill
+    -- toggle pill - supports text OR icon, auto-sizes
+    local pillText = opts.ToggleText or opts.ToggleIcon or "V"
+    local pillIsIcon = opts.ToggleIcon ~= nil
+    local pillH = mobile and 48 or 36
+
+    -- calc width: auto-size for text length
+    local pillW = pillH -- default square
+    if not pillIsIcon and #pillText > 1 then
+        -- estimate text width + padding
+        pillW = math.max(pillH, #pillText * (mobile and 11 or 9) + (mobile and 24 or 18))
+    end
+
     local togglePill = create("TextButton", {
         Name = "VelvetToggle",
-        Size = UDim2.new(0, mobile and 48 or 36, 0, mobile and 48 or 36),
-        Position = UDim2.new(0, 12, 0.5, mobile and -24 or -18),
+        Size = UDim2.new(0, pillW, 0, pillH),
+        Position = UDim2.new(0, 12, 0.5, -pillH/2),
         BackgroundColor3 = theme.Accent,
         BackgroundTransparency = 0.15,
-        Text = "V",
-        TextColor3 = theme.Text,
-        TextSize = mobile and 18 or 14,
-        Font = Enum.Font.GothamBold,
+        Text = "",
         BorderSizePixel = 0,
         AutoButtonColor = false,
         ZIndex = 100,
         Visible = false,
         Parent = gui
     })
-    addCorner(togglePill, mobile and 24 or 18)
+    addCorner(togglePill, pillH / 2)
     addStroke(togglePill, theme.Accent, 1, 0.3)
+
+    if pillIsIcon then
+        -- icon mode: use ImageLabel
+        local iconImg = create("ImageLabel", {
+            Size = UDim2.new(0, mobile and 22 or 18, 0, mobile and 22 or 18),
+            Position = UDim2.new(0.5, mobile and -11 or -9, 0.5, mobile and -11 or -9),
+            BackgroundTransparency = 1,
+            Image = opts.ToggleIcon,
+            ImageColor3 = theme.Text,
+            ScaleType = Enum.ScaleType.Fit,
+            ZIndex = 101,
+            Parent = togglePill
+        })
+    else
+        -- text mode
+        create("TextLabel", {
+            Size = UDim2.fromScale(1, 1),
+            BackgroundTransparency = 1,
+            Text = pillText,
+            TextColor3 = theme.Text,
+            TextSize = mobile and 16 or 13,
+            Font = Enum.Font.GothamBold,
+            TextTruncate = Enum.TextTruncate.AtEnd,
+            ZIndex = 101,
+            Parent = togglePill
+        })
+    end
 
     -- pill drag
     local pillDrag, pillDragStart, pillStartPos = false, nil, nil
@@ -599,7 +883,7 @@ function Velvet:CreateWindow(opts)
 
     -- close / minimize
     closeBtn.MouseButton1Click:Connect(function()
-        window:Hide()
+        window:Destroy()
     end)
     minBtn.MouseButton1Click:Connect(function()
         window:Hide()
