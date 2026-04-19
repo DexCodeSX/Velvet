@@ -157,6 +157,129 @@ miscSection:AddParagraph({
     Content = "Velvet UI Library by DexCodeSX. Open source on GitHub."
 })
 
+----------------------------------------------------------------
+-- new stuff showcase
+----------------------------------------------------------------
+local New = Window:AddTab("New Stuff")
+
+-- sub-tabs
+local subA = New:AddSubTab("Elements")
+local subB = New:AddSubTab("Mobile")
+
+-- progress bar
+local elemSec = subA:AddSection("New Elements")
+local bar = elemSec:AddProgressBar("Loading", {
+    Text = "XP Progress",
+    Default = 0,
+    Max = 100,
+    Color = Color3.fromRGB(120, 200, 255),
+})
+task.spawn(function()
+    for i = 1, 100 do
+        bar:Set(i)
+        task.wait(0.05)
+    end
+end)
+
+-- log / console
+local log = elemSec:AddLog({ Height = 120, MaxLines = 40 })
+log:Success("Velvet 2.0 loaded")
+log:Info("Listening for events")
+log:Warn("This is a warning")
+log:Error("This is an error")
+
+-- player selector with @me, @random, @nearest
+elemSec:AddPlayerSelector("Target", {
+    Text = "Target Player",
+    ExcludeSelf = true,
+    Callback = function(v)
+        log:Info("selected: " .. tostring(v))
+    end
+})
+
+-- conditional visibility + tooltips
+local condSec = subA:AddSection("Conditional Visibility")
+condSec:AddToggle("ShowAdvanced", {
+    Text = "Show Advanced",
+    Default = false,
+    Tooltip = "Unlocks hidden options below",
+})
+condSec:AddSlider("Advanced1", {
+    Text = "Advanced Slider",
+    Min = 0, Max = 100, Default = 50,
+    VisibleWhen = "ShowAdvanced",
+    Tooltip = "Only visible when Show Advanced is on",
+})
+
+-- OnChanged chaining
+local chain = condSec:AddToggle("Chain1", { Text = "Chained Toggle", Default = false })
+chain:OnChanged(function(v)
+    log:Info("chain fired: " .. tostring(v))
+end)
+
+-- mobile / ui scale
+local mobSec = subB:AddSection("Mobile Features")
+mobSec:AddSlider("UIScale", {
+    Text = "UI Scale",
+    Min = 0.7, Max = 1.5, Default = 1, Increment = 0.05,
+    Callback = function(v) Window:SetScale(v) end,
+})
+mobSec:AddButton({
+    Text = "Collapse Sidebar",
+    Callback = function() Window:ToggleSidebar() end,
+})
+mobSec:AddButton({
+    Text = "Haptic pulse",
+    Callback = function() Velvet:Haptic("heavy") end,
+})
+mobSec:AddParagraph({
+    Title = "Gestures",
+    Content = "Swipe left/right in content area to change tabs (mobile only).",
+})
+
+-- watermark
+Velvet:CreateWatermark({
+    Text = "Velvet | {fps} fps | {ping} ms | {user}",
+})
+
+-- config share
+local shareSec = Settings:AddSection("Share Config")
+local shareIn = shareSec:AddInput("ShareString", {
+    Text = "Config String (base64)",
+    Placeholder = "paste config here",
+})
+shareSec:AddButton({
+    Text = "Export Config",
+    Callback = function()
+        local s = SaveManager:Export()
+        if s then
+            setclipboard(s)
+            Velvet:Notify({Title="Export",Content="Copied base64 to clipboard",Duration=3,Type="success"})
+        end
+    end
+})
+shareSec:AddButton({
+    Text = "Import Config",
+    Callback = function()
+        local ok = SaveManager:Import(Velvet.Flags.ShareString or "")
+        Velvet:Notify({Title="Import",Content=ok and "Loaded" or "Failed",Duration=3,Type=ok and "success" or "error"})
+    end
+})
+shareSec:AddButton({
+    Text = "Check for Update",
+    Callback = function()
+        local info = Velvet:CheckForUpdate("DexCodeSX/Velvet")
+        if info then
+            Velvet:Notify({
+                Title = "Update",
+                Content = info.outdated and ("New: " .. info.latest) or "Up to date",
+                Duration = 4,
+                Type = info.outdated and "info" or "success",
+            })
+        end
+    end
+})
+
 -- settings tab
 local Settings = Window:AddTab("Settings")
 local themeSection = Settings:AddSection("Theme")

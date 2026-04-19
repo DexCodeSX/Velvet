@@ -12,6 +12,17 @@ Premium dark glassmorphism UI library for Roblox. PC + Mobile.
 
 - Dark glassmorphism aesthetic with smooth animations
 - Toggle, Slider, Button, Dropdown, Input, ColorPicker, Keybind, Label, Divider, Paragraph
+- **ProgressBar, Log/Console, PlayerSelector** (new in 2.0)
+- **Sub-tabs** (pill row inside a tab for grouping)
+- **Conditional visibility** (`VisibleWhen = "flagId"`)
+- **Tooltips** on any element (`Tooltip = "text"`)
+- **OnChanged chaining** (`elem:OnChanged(fn)`)
+- **Watermark/HUD** with live `{fps}`, `{ping}`, `{time}`, `{user}`, `{flag:id}` tokens
+- **Config Import/Export** as base64 strings (share configs in chat)
+- **Auto-update check** against GitHub releases
+- **Sidebar collapse** + **swipe-to-switch-tabs** gestures on mobile
+- **UIScale** for font/element scaling (`Window:SetScale(1.2)`)
+- **Haptic feedback** (`Velvet:Haptic("light")`)
 - Multi-select dropdowns with search
 - HSV color picker with hex input
 - Keybind system (Toggle/Hold/Always modes)
@@ -25,6 +36,7 @@ Premium dark glassmorphism UI library for Roblox. PC + Mobile.
 - Collapsible sections
 - Key system with saved keys
 - Custom toggle pill (text or icon, auto-sizing)
+- `Velvet:Destroy()` full cleanup
 - Single loadstring setup
 
 ## Install
@@ -222,6 +234,55 @@ local Window = Velvet:CreateWindow({
     Title = "My Script",
     ToggleIcon = "rbxassetid://123456", -- icon image
 })
+```
+
+### New in 2.0
+
+```lua
+-- progress bar
+local bar = section:AddProgressBar("XP", { Text="XP", Default=0, Max=100, Color=Color3.fromRGB(120,200,255) })
+bar:Set(42)
+
+-- log / console
+local log = section:AddLog({ Height=120, MaxLines=50 })
+log:Info("hi") log:Warn("oops") log:Error("x") log:Success("done")
+
+-- player selector (auto-refreshes on join/leave, supports @me/@random/@nearest)
+local ps = section:AddPlayerSelector("Target", { ExcludeSelf=true })
+for _, p in ps:GetPlayers() do print(p.Name) end
+
+-- sub-tabs inside a tab
+local sub = Tab:AddSubTab("Combat")
+local s = sub:AddSection("Aimbot")
+
+-- conditional visibility - hide until a flag is truthy
+section:AddSlider("Adv", { Text="Advanced", Min=0, Max=100, Default=50, VisibleWhen="ShowAdvanced" })
+
+-- tooltips
+section:AddToggle("X", { Text="Toggle", Tooltip="Hover help text", Default=false })
+
+-- OnChanged listener
+local t = section:AddToggle("Y", { Text="Y" })
+t:OnChanged(function(v) print("changed:", v) end)
+
+-- watermark
+Velvet:CreateWatermark({ Text="Velvet | {fps} fps | {ping} ms | {user}" })
+
+-- share config as base64
+local str = SaveManager:Export()
+SaveManager:Import(str)
+
+-- update check
+local info = Velvet:CheckForUpdate("DexCodeSX/Velvet")
+-- info.latest, info.current, info.outdated
+
+-- UI scale, sidebar toggle, haptic
+Window:SetScale(1.2)
+Window:ToggleSidebar()
+Velvet:Haptic("medium")
+
+-- clean destroy
+Velvet:Destroy()
 ```
 
 ## License
