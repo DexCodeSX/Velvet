@@ -935,10 +935,12 @@ function Velvet:CreateWindow(opts)
         pcall(function() main:Destroy() end)
         pcall(function() togglePill:Destroy() end)
     end
+    window.ScreenGui = gui
 
     -- close / minimize
     closeBtn.MouseButton1Click:Connect(function()
-        window:Destroy()
+        -- full nuke: window + watermark + toggle pill + listeners + all velvet stuff
+        Velvet:Destroy()
     end)
     minBtn.MouseButton1Click:Connect(function()
         window:Hide()
@@ -2448,7 +2450,7 @@ function Velvet:CreateWindow(opts)
                 local bar = { Value = progress }
                 function bar:Set(v)
                     progress = math.clamp(v, 0, maxVal)
-                    tween(fill, {Size = UDim2.new(progress / maxVal, 0, 1, 0)}, 0.2)
+                    tween(fill, {Size = UDim2.new(progress / maxVal, 0, 1, 0)}, 0.12)
                     if pctLbl then pctLbl.Text = tostring(math.floor(progress)) .. "/" .. tostring(maxVal) end
                     Velvet.Flags[id] = progress
                     fireListeners(id, progress)
