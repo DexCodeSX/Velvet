@@ -1,5 +1,11 @@
 # Velvet
 
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Lua](https://img.shields.io/badge/Lua-5.1-2C2D72.svg?logo=lua)](https://lua.org)
+[![Roblox](https://img.shields.io/badge/Roblox-Exploit_UI-red.svg)](https://github.com/DexCodeSX/Velvet)
+[![Mobile Ready](https://img.shields.io/badge/mobile-ready-brightgreen.svg)]()
+[![Stars](https://img.shields.io/github/stars/DexCodeSX/Velvet?style=social)](https://github.com/DexCodeSX/Velvet)
+
 Premium dark glassmorphism UI library for Roblox. PC + Mobile.
 
 ## Features
@@ -17,6 +23,8 @@ Premium dark glassmorphism UI library for Roblox. PC + Mobile.
 - Custom theme support
 - Flag system for easy value access
 - Collapsible sections
+- Key system with saved keys
+- Custom toggle pill (text or icon, auto-sizing)
 - Single loadstring setup
 
 ## Install
@@ -183,6 +191,38 @@ ThemeManager:LoadSaved() -- loads last used theme
 - **Rose** - pink accent, warm dark
 - **Emerald** - green accent, forest dark
 - **Sunset** - orange accent, warm brown
+
+### Key System
+
+```lua
+Velvet:KeySystem({
+    Title = "My Script",
+    SubTitle = "Key Required",
+    Keys = {"key123", "beta-access"},
+    SaveKey = true,
+    GetKeyLink = "https://link-to-key.com",
+    Callback = function()
+        -- runs after valid key entered
+        -- create your window here
+    end
+})
+```
+
+### Window Toggle Pill
+
+```lua
+-- custom text on floating pill (auto-sizes to fit)
+local Window = Velvet:CreateWindow({
+    Title = "My Script",
+    ToggleText = "MS", -- short text, auto-sizes
+})
+
+-- or use an icon instead
+local Window = Velvet:CreateWindow({
+    Title = "My Script",
+    ToggleIcon = "rbxassetid://123456", -- icon image
+})
+```
 
 ## License
 
