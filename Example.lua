@@ -5,16 +5,39 @@ local Velvet = loadstring(game:HttpGet("https://raw.githubusercontent.com/DexCod
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/DexCodeSX/Velvet/main/addons/SaveManager.lua"))()
 local ThemeManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/DexCodeSX/Velvet/main/addons/ThemeManager.lua"))()
 
+--[[
+    KEY SYSTEM (optional, remove this block if you dont need it)
+    validates key before showing the main ui
+    set SaveKey to a filename to remember valid keys
+]]
+Velvet:KeySystem({
+    Title = "My Script",
+    SubTitle = "Enter key to continue",
+    Keys = {"free-key-123", "vip-key-456"},
+    SaveKey = "MyScriptKey.txt",
+    GetKeyLink = "https://your-key-link.com",
+    Callback = function()
+        -- everything below runs after key is validated
+        loadUI()
+    end
+})
+
+function loadUI()
+
 -- bind addons
 SaveManager:Bind(Velvet, "MyScriptConfig")
 ThemeManager:Bind(Velvet)
 ThemeManager:LoadSaved()
 
 -- create window
+-- ToggleText = custom text on the floating pill (default "V")
+-- ToggleIcon = use an image instead of text (rbxassetid://...)
 local Window = Velvet:CreateWindow({
     Title = "My Script",
     SubTitle = "v1.0",
     ToggleKey = Enum.KeyCode.RightShift,
+    ToggleText = "MS",  -- shows "MS" on the toggle pill instead of "V"
+    -- ToggleIcon = "rbxassetid://123456789",  -- or use an icon
 })
 
 -- combat tab
@@ -191,3 +214,15 @@ Velvet:Notify({
     Duration = 4,
     Type = "success"
 })
+
+end -- loadUI
+
+--[[
+    NO KEY SYSTEM VERSION:
+    if you dont want a key system, delete the KeySystem block above
+    and just call everything directly without the loadUI() wrapper:
+
+    local Velvet = loadstring(...)()
+    local Window = Velvet:CreateWindow({...})
+    -- etc
+]]
