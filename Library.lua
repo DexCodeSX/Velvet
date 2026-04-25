@@ -1598,9 +1598,8 @@ function Velvet:CreateWindow(opts)
                     v = round(clamp(v, min, max), inc)
                     value = v
                     local pct = (v - min) / (max - min)
-                    local trackW = sliderTrack.AbsoluteSize.X
                     fill.Size = UDim2.new(pct, 0, 1, 0)
-                    sliderThumb.Position = UDim2.new(0, math.max(0, pct * trackW - 7), 0.5, -7)
+                    sliderThumb.Position = UDim2.new(pct, -7, 0.5, -7)
                     valLabel.Text = tostring(v) .. suffix
                     Velvet.Flags[id] = v
                     fireListeners(id, v)
@@ -1717,8 +1716,12 @@ function Velvet:CreateWindow(opts)
                     for _, v in opts.Default do selected[v] = true end
                 end
 
+                local hasTitle = opts.Text ~= nil
+                local headerY = hasTitle and 16 or 0
+                local elemH = (mobile and 38 or 32) + headerY
+
                 local elem = create("Frame", {
-                    Size = UDim2.new(1, 0, 0, 32),
+                    Size = UDim2.new(1, 0, 0, elemH),
                     BackgroundTransparency = 1,
                     AutomaticSize = Enum.AutomaticSize.Y,
                     ZIndex = 6,
@@ -1728,6 +1731,7 @@ function Velvet:CreateWindow(opts)
 
                 local header = create("TextButton", {
                     Size = UDim2.new(1, 0, 0, mobile and 38 or 32),
+                    Position = UDim2.new(0, 0, 0, headerY),
                     BackgroundColor3 = theme.Surface,
                     BackgroundTransparency = 0.3,
                     Text = "",
@@ -1765,11 +1769,10 @@ function Velvet:CreateWindow(opts)
                     Parent = header
                 })
 
-                -- title above
-                if opts.Text then
+                if hasTitle then
                     create("TextLabel", {
                         Size = UDim2.new(1, 0, 0, 14),
-                        Position = UDim2.new(0, 0, 0, -16),
+                        Position = UDim2.new(0, 0, 0, 0),
                         BackgroundTransparency = 1,
                         Text = opts.Text,
                         TextColor3 = theme.TextDim,
@@ -1796,7 +1799,7 @@ function Velvet:CreateWindow(opts)
                 -- dropdown list
                 local dropFrame = create("Frame", {
                     Size = UDim2.new(1, 0, 0, 0),
-                    Position = UDim2.new(0, 0, 0, mobile and 42 or 36),
+                    Position = UDim2.new(0, 0, 0, headerY + (mobile and 42 or 36)),
                     BackgroundColor3 = theme.Surface,
                     BackgroundTransparency = 0.05,
                     ClipsDescendants = true,
@@ -2165,17 +2168,17 @@ function Velvet:CreateWindow(opts)
                 addCorner(swatch, 4)
                 addStroke(swatch, theme.Border, 1, 0.4)
 
-                -- picker popup
+                -- picker popup (parented to gui so section ClipsDescendants doesn't clip it)
                 local pickerOpen = false
                 local pickerFrame = create("Frame", {
                     Size = UDim2.new(0, 180, 0, 0),
-                    Position = UDim2.new(1, -184, 0, mobile and 40 or 34),
+                    Position = UDim2.new(0, 0, 0, 0),
                     BackgroundColor3 = theme.Surface,
                     BackgroundTransparency = 0.05,
                     ClipsDescendants = true,
                     Visible = false,
-                    ZIndex = 30,
-                    Parent = elem
+                    ZIndex = 100,
+                    Parent = gui
                 })
                 addCorner(pickerFrame, 8)
                 addStroke(pickerFrame, theme.Border, 1, 0.3)
@@ -2355,6 +2358,13 @@ function Velvet:CreateWindow(opts)
                 swatch.MouseButton1Click:Connect(function()
                     pickerOpen = not pickerOpen
                     if pickerOpen then
+                        -- position next to swatch
+                        local absPos = swatch.AbsolutePosition
+                        local absSize = swatch.AbsoluteSize
+                        local guiOff = gui.AbsolutePosition
+                        local px = absPos.X - guiOff.X + absSize.X - 180
+                        local py = absPos.Y - guiOff.Y + absSize.Y + 4
+                        pickerFrame.Position = UDim2.new(0, px, 0, py)
                         pickerFrame.Visible = true
                         tween(pickerFrame, {Size = UDim2.new(0, 180, 0, 182)}, 0.2)
                     else
@@ -2495,6 +2505,7 @@ function Velvet:CreateWindow(opts)
                     BackgroundColor3 = theme.Surface,
                     BackgroundTransparency = 0.2,
                     BorderSizePixel = 0,
+                    ClipsDescendants = true,
                     ZIndex = 7,
                     Parent = elem
                 })
@@ -2508,7 +2519,6 @@ function Velvet:CreateWindow(opts)
                     ZIndex = 8,
                     Parent = barBg
                 })
-                addCorner(fill, 5)
 
                 local pctLbl
                 if showText then
@@ -2720,10 +2730,68 @@ function Velvet:CreateWindow(opts)
     return window
 end
 
--- theme setter
+-- theme setter with live recolor
 function Velvet:SetTheme(themeTable)
+    -- build old->new color map
+    local colorMap = {}
     for k, v in themeTable do
+        if typeof(v) == "Color3" and typeof(self.Theme[k]) == "Color3" then
+            local old = self.Theme[k]
+            colorMap[string.format("%d_%d_%d", math.floor(old.R*255+.5), math.floor(old.G*255+.5), math.floor(old.B*255+.5))] = v
+        end
         self.Theme[k] = v
+    end
+
+    -- recolor all descendants of VelvetUI + VelvetNotifs
+    local colorProps = {"BackgroundColor3", "TextColor3", "PlaceholderColor3", "ImageColor3", "ScrollBarImageColor3"}
+    local containers = {}
+    pcall(function()
+        for _, g in gethui():GetChildren() do
+            if g.Name == "VelvetUI" or g.Name == "VelvetNotifs" then
+                table.insert(containers, g)
+            end
+        end
+    end)
+
+    for _, container in containers do
+        for _, desc in container:GetDescendants() do
+            for _, prop in colorProps do
+                pcall(function()
+                    local cur = desc[prop]
+                    if typeof(cur) == "Color3" then
+                        local key = string.format("%d_%d_%d", math.floor(cur.R*255+.5), math.floor(cur.G*255+.5), math.floor(cur.B*255+.5))
+                        if colorMap[key] then
+                            desc[prop] = colorMap[key]
+                        end
+                    end
+                end)
+            end
+            -- UIStroke
+            if desc:IsA("UIStroke") then
+                pcall(function()
+                    local cur = desc.Color
+                    local key = string.format("%d_%d_%d", math.floor(cur.R*255+.5), math.floor(cur.G*255+.5), math.floor(cur.B*255+.5))
+                    if colorMap[key] then desc.Color = colorMap[key] end
+                end)
+            end
+        end
+    end
+
+    -- also update watermark if exists
+    if self._watermark then
+        pcall(function()
+            for _, desc in self._watermark:GetDescendants() do
+                for _, prop in colorProps do
+                    pcall(function()
+                        local cur = desc[prop]
+                        if typeof(cur) == "Color3" then
+                            local key = string.format("%d_%d_%d", math.floor(cur.R*255+.5), math.floor(cur.G*255+.5), math.floor(cur.B*255+.5))
+                            if colorMap[key] then desc[prop] = colorMap[key] end
+                        end
+                    end)
+                end
+            end
+        end)
     end
 end
 
