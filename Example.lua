@@ -1,89 +1,86 @@
--- Velvet UI Library - Example Script
+-- Velvet UI Library - Full Example
 -- github.com/DexCodeSX/Velvet
+-- run directly via executor, or loadstring from raw github (repo must be public)
 
-local Velvet = loadstring(game:HttpGet("https://raw.githubusercontent.com/DexCodeSX/Velvet/main/Library.lua"))()
-local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/DexCodeSX/Velvet/main/addons/SaveManager.lua"))()
-local ThemeManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/DexCodeSX/Velvet/main/addons/ThemeManager.lua"))()
+----------------------------------------------------------------
+-- LOAD (pick one method)
+----------------------------------------------------------------
+-- method 1: github raw (needs public repo)
+-- local Velvet = loadstring(game:HttpGet("https://raw.githubusercontent.com/DexCodeSX/Velvet/main/Library.lua"))()
+-- local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/DexCodeSX/Velvet/main/addons/SaveManager.lua"))()
+-- local ThemeManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/DexCodeSX/Velvet/main/addons/ThemeManager.lua"))()
+-- local Icons = loadstring(game:HttpGet("https://raw.githubusercontent.com/DexCodeSX/Velvet/main/addons/Icons.lua"))()
 
---[[
-    KEY SYSTEM (optional, remove this block if you dont need it)
-    validates key before showing the main ui
-    set SaveKey to a filename to remember valid keys
-]]
-Velvet:KeySystem({
-    Title = "My Script",
-    SubTitle = "Enter key to continue",
-    Keys = {"free-key-123", "vip-key-456"},
-    SaveKey = "MyScriptKey.txt",
-    GetKeyLink = "https://your-key-link.com",
-    Callback = function()
-        -- everything below runs after key is validated
-        loadUI()
-    end
-})
+-- method 2: local files (delta workspace)
+local Velvet = loadstring(readfile("Velvet/Library.lua"))()
+local SaveManager = loadstring(readfile("Velvet/addons/SaveManager.lua"))()
+local ThemeManager = loadstring(readfile("Velvet/addons/ThemeManager.lua"))()
+local Icons = loadstring(readfile("Velvet/addons/Icons.lua"))()
 
-function loadUI()
-
--- bind addons
-SaveManager:Bind(Velvet, "MyScriptConfig")
+----------------------------------------------------------------
+-- SETUP
+----------------------------------------------------------------
+Velvet:SetIcons(Icons)
+SaveManager:Bind(Velvet, "VelvetExample")
 ThemeManager:Bind(Velvet)
-ThemeManager:LoadSaved()
 
--- create window
--- ToggleText = custom text on the floating pill (default "V")
--- ToggleIcon = use an image instead of text (rbxassetid://...)
+----------------------------------------------------------------
+-- WINDOW (with lucide icon on toggle pill)
+----------------------------------------------------------------
 local Window = Velvet:CreateWindow({
-    Title = "My Script",
-    SubTitle = "v1.0",
+    Title = "Velvet",
+    SubTitle = "v2.0 showcase",
     ToggleKey = Enum.KeyCode.RightShift,
-    ToggleText = "MS",  -- shows "MS" on the toggle pill instead of "V"
-    -- ToggleIcon = "rbxassetid://123456789",  -- or use an icon
+    ToggleIcon = "sparkles",
 })
 
--- combat tab
-local Combat = Window:AddTab("Combat")
+----------------------------------------------------------------
+-- COMBAT TAB
+----------------------------------------------------------------
+local Combat = Window:AddTab("Combat", "sword")
 local aimSection = Combat:AddSection("Aimbot")
 
 aimSection:AddToggle("AimbotEnabled", {
     Text = "Enable Aimbot",
     Default = false,
-    Callback = function(v)
-        print("Aimbot:", v)
-    end
+    Tooltip = "Locks camera to nearest player head",
+    Callback = function(v) print("Aimbot:", v) end
 })
 
 aimSection:AddSlider("FOV", {
     Text = "FOV Radius",
-    Min = 10,
-    Max = 500,
-    Default = 150,
-    Increment = 5,
+    Min = 10, Max = 500, Default = 150, Increment = 5,
     Suffix = "px",
-    Callback = function(v)
-        print("FOV:", v)
-    end
+    VisibleWhen = "AimbotEnabled",
+    Callback = function(v) print("FOV:", v) end
 })
 
 aimSection:AddDropdown("TargetPart", {
     Text = "Target Part",
     Values = {"Head", "HumanoidRootPart", "Torso"},
     Default = "Head",
-    Callback = function(v)
-        print("Target:", v)
-    end
+    VisibleWhen = "AimbotEnabled",
 })
 
 aimSection:AddKeybind("AimKey", {
     Text = "Aim Key",
     Default = Enum.KeyCode.E,
     Mode = "Hold",
-    Callback = function(active)
-        print("Aim active:", active)
-    end
+    VisibleWhen = "AimbotEnabled",
+    Callback = function(active) print("Aim:", active) end
 })
 
--- visuals tab
-local Visuals = Window:AddTab("Visuals")
+-- player selector
+aimSection:AddPlayerSelector("AimTarget", {
+    Text = "Lock Target",
+    ExcludeSelf = true,
+    VisibleWhen = "AimbotEnabled",
+})
+
+----------------------------------------------------------------
+-- VISUALS TAB
+----------------------------------------------------------------
+local Visuals = Window:AddTab("Visuals", "eye")
 local espSection = Visuals:AddSection("ESP")
 
 espSection:AddToggle("ESPEnabled", {
@@ -95,177 +92,211 @@ espSection:AddToggle("ESPEnabled", {
 espSection:AddColorPicker("ESPColor", {
     Text = "ESP Color",
     Default = Color3.fromRGB(255, 50, 50),
-    Callback = function(c)
-        print("Color:", c)
-    end
+    VisibleWhen = "ESPEnabled",
 })
 
 espSection:AddToggle("ESPNames", {
     Text = "Show Names",
     Default = true,
+    VisibleWhen = "ESPEnabled",
 })
 
 espSection:AddToggle("ESPHealth", {
     Text = "Show Health",
     Default = true,
+    VisibleWhen = "ESPEnabled",
 })
 
 espSection:AddDivider()
 
 espSection:AddSlider("ESPDistance", {
     Text = "Max Distance",
-    Min = 100,
-    Max = 5000,
-    Default = 2000,
-    Increment = 50,
+    Min = 100, Max = 5000, Default = 2000, Increment = 50,
     Suffix = " studs",
+    VisibleWhen = "ESPEnabled",
 })
 
--- misc tab
-local Misc = Window:AddTab("Misc")
-local miscSection = Misc:AddSection("Utility")
+----------------------------------------------------------------
+-- MISC TAB (with sub-tabs)
+----------------------------------------------------------------
+local Misc = Window:AddTab("Misc", "wrench")
 
-miscSection:AddButton({
+local subUtil = Misc:AddSubTab("Utility")
+local subNew = Misc:AddSubTab("New 2.0")
+
+-- utility sub-tab
+local utilSection = subUtil:AddSection("Tools")
+
+utilSection:AddButton({
     Text = "Server Hop",
     Callback = function()
-        Velvet:Notify({
-            Title = "Server Hop",
-            Content = "Finding low-population server...",
-            Duration = 3,
-            Type = "info"
-        })
+        Velvet:Notify({Title="Server Hop", Content="Finding server...", Duration=3, Type="info"})
     end
 })
 
-miscSection:AddInput("Webhook", {
+utilSection:AddInput("Webhook", {
     Text = "Webhook URL",
     Placeholder = "https://discord.com/api/webhooks/...",
-    Callback = function(url)
-        print("Webhook set:", url)
-    end
 })
 
-miscSection:AddDropdown("Team", {
+utilSection:AddDropdown("Team", {
     Text = "Filter Teams",
     Values = {"All", "Enemy", "Friendly"},
     Default = "Enemy",
-    Multi = false,
 })
 
-miscSection:AddParagraph({
+utilSection:AddParagraph({
     Title = "Info",
     Content = "Velvet UI Library by DexCodeSX. Open source on GitHub."
 })
 
-----------------------------------------------------------------
--- new stuff showcase
-----------------------------------------------------------------
-local New = Window:AddTab("New Stuff")
+-- new 2.0 sub-tab
+local newSection = subNew:AddSection("Progress + Log")
 
--- sub-tabs
-local subA = New:AddSubTab("Elements")
-local subB = New:AddSubTab("Mobile")
-
--- progress bar
-local elemSec = subA:AddSection("New Elements")
-local bar = elemSec:AddProgressBar("Loading", {
+local bar = newSection:AddProgressBar("XPBar", {
     Text = "XP Progress",
-    Default = 0,
-    Max = 100,
+    Default = 0, Max = 100,
     Color = Color3.fromRGB(120, 200, 255),
 })
+
+local log = newSection:AddLog({ Height = 120, MaxLines = 40 })
+log:Success("Velvet 2.0 loaded")
+log:Info("listening for events")
+log:Warn("this is a warning")
+log:Error("this is an error")
+
+-- progress demo
 task.spawn(function()
-    for i = 1, 100 do
+    for i = 1, 100, 4 do
         bar:Set(i)
-        task.wait(0.05)
+        task.wait(0.06)
     end
+    log:Success("XP bar done")
 end)
 
--- log / console
-local log = elemSec:AddLog({ Height = 120, MaxLines = 40 })
-log:Success("Velvet 2.0 loaded")
-log:Info("Listening for events")
-log:Warn("This is a warning")
-log:Error("This is an error")
-
--- player selector with @me, @random, @nearest
-elemSec:AddPlayerSelector("Target", {
-    Text = "Target Player",
-    ExcludeSelf = true,
-    Callback = function(v)
-        log:Info("selected: " .. tostring(v))
-    end
-})
-
 -- conditional visibility + tooltips
-local condSec = subA:AddSection("Conditional Visibility")
-condSec:AddToggle("ShowAdvanced", {
+local condSection = subNew:AddSection("Conditional Visibility")
+
+condSection:AddToggle("ShowAdvanced", {
     Text = "Show Advanced",
     Default = false,
-    Tooltip = "Unlocks hidden options below",
+    Tooltip = "unlocks hidden options below",
 })
-condSec:AddSlider("Advanced1", {
+
+condSection:AddSlider("AdvSlider", {
     Text = "Advanced Slider",
     Min = 0, Max = 100, Default = 50,
     VisibleWhen = "ShowAdvanced",
-    Tooltip = "Only visible when Show Advanced is on",
+    Tooltip = "only visible when Show Advanced is on",
 })
 
 -- OnChanged chaining
-local chain = condSec:AddToggle("Chain1", { Text = "Chained Toggle", Default = false })
-chain:OnChanged(function(v)
-    log:Info("chain fired: " .. tostring(v))
+local chained = condSection:AddToggle("Chained", { Text = "Chained Toggle", Default = false })
+chained:OnChanged(function(v)
+    log:Info("chained fired: " .. tostring(v))
 end)
 
--- mobile / ui scale
-local mobSec = subB:AddSection("Mobile Features")
-mobSec:AddSlider("UIScale", {
+----------------------------------------------------------------
+-- SETTINGS TAB
+----------------------------------------------------------------
+local Settings = Window:AddTab("Settings", "settings")
+
+-- theme
+local themeSection = Settings:AddSection("Theme")
+themeSection:AddDropdown("Theme", {
+    Text = "UI Theme",
+    Values = ThemeManager:GetThemes(),
+    Default = ThemeManager.Current,
+    Callback = function(v)
+        ThemeManager:SetTheme(v)
+        Velvet:Notify({Title="Theme", Content="Switched to " .. v, Duration=2, Type="success"})
+    end
+})
+
+-- config save/load
+local configSection = Settings:AddSection("Config")
+configSection:AddInput("ConfigName", {
+    Text = "Config Name",
+    Default = "default",
+    Placeholder = "config name",
+})
+configSection:AddButton({
+    Text = "Save Config",
+    Callback = function()
+        local name = Velvet.Flags["ConfigName"] or "default"
+        local ok, err = SaveManager:Save(name)
+        Velvet:Notify({Title="Config", Content=ok and ("Saved: "..name) or ("Error: "..tostring(err)), Duration=3, Type=ok and "success" or "error"})
+    end
+})
+configSection:AddButton({
+    Text = "Load Config",
+    Callback = function()
+        local name = Velvet.Flags["ConfigName"] or "default"
+        local ok, err = SaveManager:Load(name)
+        Velvet:Notify({Title="Config", Content=ok and ("Loaded: "..name) or ("Error: "..tostring(err)), Duration=3, Type=ok and "success" or "error"})
+    end
+})
+
+-- config share (base64)
+local shareSection = Settings:AddSection("Share Config")
+shareSection:AddInput("ShareString", {
+    Text = "Config String",
+    Placeholder = "paste base64 config here",
+})
+shareSection:AddButton({
+    Text = "Export to Clipboard",
+    Callback = function()
+        local s = SaveManager:Export()
+        if s then
+            pcall(setclipboard, s)
+            Velvet:Notify({Title="Export", Content="Copied " .. #s .. " bytes to clipboard", Duration=3, Type="success"})
+        end
+    end
+})
+shareSection:AddButton({
+    Text = "Import from String",
+    Callback = function()
+        local ok = SaveManager:Import(Velvet.Flags.ShareString or "")
+        Velvet:Notify({Title="Import", Content=ok and "Loaded" or "Failed", Duration=3, Type=ok and "success" or "error"})
+    end
+})
+
+-- mobile / ui
+local uiSection = Settings:AddSection("UI")
+uiSection:AddSlider("UIScale", {
     Text = "UI Scale",
     Min = 0.7, Max = 1.5, Default = 1, Increment = 0.05,
     Callback = function(v) Window:SetScale(v) end,
 })
-mobSec:AddButton({
-    Text = "Collapse Sidebar",
+uiSection:AddButton({
+    Text = "Toggle Sidebar",
     Callback = function() Window:ToggleSidebar() end,
 })
-mobSec:AddButton({
-    Text = "Haptic pulse",
+uiSection:AddButton({
+    Text = "Haptic Pulse",
     Callback = function() Velvet:Haptic("heavy") end,
 })
-mobSec:AddParagraph({
-    Title = "Gestures",
-    Content = "Swipe left/right in content area to change tabs (mobile only).",
-})
 
--- watermark
-Velvet:CreateWatermark({
-    Text = "Velvet | {fps} fps | {ping} ms | {user}",
-})
-
--- config share
-local shareSec = Settings:AddSection("Share Config")
-local shareIn = shareSec:AddInput("ShareString", {
-    Text = "Config String (base64)",
-    Placeholder = "paste config here",
-})
-shareSec:AddButton({
-    Text = "Export Config",
-    Callback = function()
-        local s = SaveManager:Export()
-        if s then
-            setclipboard(s)
-            Velvet:Notify({Title="Export",Content="Copied base64 to clipboard",Duration=3,Type="success"})
+-- icon search
+local iconSection = Settings:AddSection("Icon Search (" .. #Icons:All() .. " icons)")
+iconSection:AddInput("IconQuery", {
+    Text = "Search Icons",
+    Placeholder = "e.g. 'arrow' or 'heart'",
+    Callback = function(q)
+        log:Clear()
+        local results = Icons:Search(q, 10)
+        if #results == 0 then
+            log:Warn("no icons found for: " .. q)
+        else
+            for _, r in ipairs(results) do
+                log:Info(r.name .. "  ->  " .. r.id)
+            end
         end
     end
 })
-shareSec:AddButton({
-    Text = "Import Config",
-    Callback = function()
-        local ok = SaveManager:Import(Velvet.Flags.ShareString or "")
-        Velvet:Notify({Title="Import",Content=ok and "Loaded" or "Failed",Duration=3,Type=ok and "success" or "error"})
-    end
-})
-shareSec:AddButton({
+
+-- update check
+uiSection:AddButton({
     Text = "Check for Update",
     Callback = function()
         local info = Velvet:CheckForUpdate("DexCodeSX/Velvet")
@@ -280,72 +311,30 @@ shareSec:AddButton({
     end
 })
 
--- settings tab
-local Settings = Window:AddTab("Settings")
-local themeSection = Settings:AddSection("Theme")
-
-themeSection:AddDropdown("Theme", {
-    Text = "UI Theme",
-    Values = ThemeManager:GetThemes(),
-    Default = ThemeManager.Current,
-    Callback = function(v)
-        ThemeManager:SetTheme(v)
-        Velvet:Notify({Title = "Theme", Content = "Switched to " .. v, Duration = 2, Type = "success"})
-    end
+----------------------------------------------------------------
+-- WATERMARK + STARTUP
+----------------------------------------------------------------
+Velvet:CreateWatermark({
+    Text = "Velvet | {fps} fps | {ping} ms | {user}",
 })
 
-local configSection = Settings:AddSection("Config")
-
-configSection:AddInput("ConfigName", {
-    Text = "Config Name",
-    Default = "default",
-    Placeholder = "config name",
-})
-
-configSection:AddButton({
-    Text = "Save Config",
-    Callback = function()
-        local name = Velvet.Flags["ConfigName"] or "default"
-        local ok, err = SaveManager:Save(name)
-        Velvet:Notify({
-            Title = "Config",
-            Content = ok and "Saved: " .. name or "Error: " .. tostring(err),
-            Duration = 3,
-            Type = ok and "success" or "error"
-        })
-    end
-})
-
-configSection:AddButton({
-    Text = "Load Config",
-    Callback = function()
-        local name = Velvet.Flags["ConfigName"] or "default"
-        local ok, err = SaveManager:Load(name)
-        Velvet:Notify({
-            Title = "Config",
-            Content = ok and "Loaded: " .. name or "Error: " .. tostring(err),
-            Duration = 3,
-            Type = ok and "success" or "error"
-        })
-    end
-})
-
--- startup notification
 Velvet:Notify({
     Title = "Velvet",
-    Content = "Script loaded successfully.",
+    Content = "v2.0 loaded - " .. #Icons:All() .. " icons available",
     Duration = 4,
     Type = "success"
 })
 
-end -- loadUI
-
 --[[
-    NO KEY SYSTEM VERSION:
-    if you dont want a key system, delete the KeySystem block above
-    and just call everything directly without the loadUI() wrapper:
+    KEY SYSTEM (optional, wrap everything above in a function):
 
-    local Velvet = loadstring(...)()
-    local Window = Velvet:CreateWindow({...})
-    -- etc
+    Velvet:KeySystem({
+        Title = "My Script",
+        SubTitle = "Enter key",
+        Keys = {"2026"},
+        SaveKey = "MyKey.txt",
+        Callback = function()
+            -- put all the code above here
+        end
+    })
 ]]
