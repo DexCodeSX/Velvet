@@ -579,7 +579,7 @@ function Velvet:CreateWindow(opts)
 
     local winW = opts.Width or (mobile and math.min(screen.X - 20, 380) or 560)
     local winH = opts.Height or (mobile and math.min(screen.Y - 80, 420) or 400)
-    local tabW = opts.TabWidth or (mobile and 44 or 150)
+    local tabW = opts.TabWidth or (mobile and 52 or 150)
 
     local window = {
         Tabs = {},
@@ -1025,28 +1025,31 @@ function Velvet:CreateWindow(opts)
         applySidebar()
     end
 
-    -- collapse toggle button in header (left side, before title)
+    -- collapse toggle button in header (right side, before minimize)
     local collapseBtn = create("TextButton", {
-        Size = UDim2.new(0, 20, 0, 20),
-        Position = UDim2.new(0, 42, 0.5, -10),
-        BackgroundTransparency = 1,
+        Size = UDim2.new(0, 24, 0, 24),
+        Position = UDim2.new(1, -96, 0.5, -12),
+        BackgroundColor3 = theme.Info,
+        BackgroundTransparency = 0.6,
         Text = "=",
-        TextColor3 = theme.TextMuted,
-        TextSize = 16,
+        TextColor3 = theme.Text,
+        TextSize = 14,
         Font = Enum.Font.GothamBold,
+        BorderSizePixel = 0,
         ZIndex = 7,
         AutoButtonColor = false,
         Parent = header
     })
+    addCorner(collapseBtn, 6)
     collapseBtn.Visible = opts.SidebarToggle ~= false
     collapseBtn.MouseButton1Click:Connect(function()
         window:ToggleSidebar()
     end)
     collapseBtn.MouseEnter:Connect(function()
-        tween(collapseBtn, {TextColor3 = theme.Text}, 0.1)
+        tween(collapseBtn, {BackgroundTransparency = 0.2}, 0.15)
     end)
     collapseBtn.MouseLeave:Connect(function()
-        tween(collapseBtn, {TextColor3 = theme.TextMuted}, 0.1)
+        tween(collapseBtn, {BackgroundTransparency = 0.6}, 0.15)
     end)
 
     -----------------------------------------------------------------------
@@ -1103,7 +1106,7 @@ function Velvet:CreateWindow(opts)
 
         -- tab button
         local tabBtn = create("TextButton", {
-            Size = UDim2.new(1, 0, 0, mobile and 40 or 32),
+            Size = UDim2.new(1, 0, 0, mobile and 44 or 32),
             BackgroundColor3 = theme.Panel,
             BackgroundTransparency = 1,
             Text = "",
@@ -1116,12 +1119,13 @@ function Velvet:CreateWindow(opts)
 
         -- icon (if provided)
         local iconImg
-        local iconSize = mobile and 18 or 14
-        local textOffset = mobile and 0 or 10
-        if iconUrl then
+        local iconSize = mobile and 20 or 14
+        local textOffset = 10
+        if iconUrl and mobile then
+            -- mobile: icon centered top, text below
             iconImg = create("ImageLabel", {
                 Size = UDim2.new(0, iconSize, 0, iconSize),
-                Position = UDim2.new(0, mobile and (22 - iconSize/2) or 8, 0.5, -iconSize/2),
+                Position = UDim2.new(0.5, -iconSize/2, 0, 4),
                 BackgroundTransparency = 1,
                 Image = iconUrl,
                 ImageColor3 = theme.TextDim,
@@ -1129,16 +1133,28 @@ function Velvet:CreateWindow(opts)
                 ZIndex = 7,
                 Parent = tabBtn,
             })
-            textOffset = mobile and 0 or (8 + iconSize + 6)
+        elseif iconUrl then
+            -- pc: icon left, text right
+            iconImg = create("ImageLabel", {
+                Size = UDim2.new(0, iconSize, 0, iconSize),
+                Position = UDim2.new(0, 8, 0.5, -iconSize/2),
+                BackgroundTransparency = 1,
+                Image = iconUrl,
+                ImageColor3 = theme.TextDim,
+                ScaleType = Enum.ScaleType.Fit,
+                ZIndex = 7,
+                Parent = tabBtn,
+            })
+            textOffset = 8 + iconSize + 6
         end
 
         local tabLabel = create("TextLabel", {
-            Size = UDim2.new(1, mobile and 0 or -(textOffset + 4), 1, 0),
-            Position = UDim2.new(0, textOffset, 0, 0),
+            Size = mobile and UDim2.new(1, 0, 0, 12) or UDim2.new(1, -(textOffset + 4), 1, 0),
+            Position = mobile and UDim2.new(0, 0, 1, -15) or UDim2.new(0, textOffset, 0, 0),
             BackgroundTransparency = 1,
-            Text = mobile and (iconUrl and "" or name:sub(1,2)) or name,
+            Text = mobile and name:sub(1, 3) or name,
             TextColor3 = theme.TextDim,
-            TextSize = mobile and 13 or 12,
+            TextSize = mobile and 9 or 12,
             Font = Enum.Font.GothamMedium,
             TextXAlignment = mobile and Enum.TextXAlignment.Center or Enum.TextXAlignment.Left,
             ZIndex = 7,
@@ -1190,7 +1206,7 @@ function Velvet:CreateWindow(opts)
             if iconImg then tween(iconImg, {ImageColor3 = theme.Text}, 0.15) end
 
             -- move indicator
-            local yPos = (tabIdx - 1) * (mobile and 42 or 34) + (mobile and 12 or 8)
+            local yPos = (tabIdx - 1) * (mobile and 46 or 34) + (mobile and 12 or 8)
             tween(tabIndicator, {Position = UDim2.new(0, 2, 0, yPos)}, 0.2)
 
             self.ActiveTab = tab
