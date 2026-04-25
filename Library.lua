@@ -216,6 +216,33 @@ local notifHolder = create("Frame", {
     }
 })
 
+---------------------------------------------------------------
+-- ICON RESOLVER
+-- accepts: rbxassetid://..., plain number id, "rbxassetid://12345",
+-- or a lucide icon name ("sword", "heart", "arrow-left") if icons are bound
+---------------------------------------------------------------
+function Velvet:SetIcons(iconPack)
+    self._icons = iconPack
+end
+
+function Velvet:ResolveIcon(ref)
+    if not ref then return nil end
+    if type(ref) == "number" then return "rbxassetid://" .. ref end
+    if type(ref) ~= "string" then return nil end
+    -- already an asset url
+    if ref:find("rbxassetid://") or ref:find("rbxthumb://") or ref:find("rbxgameasset://") or ref:find("http") then
+        return ref
+    end
+    -- numeric string
+    if tonumber(ref) then return "rbxassetid://" .. ref end
+    -- lucide name via bound icon pack
+    if self._icons then
+        local id = self._icons:Get(ref) or self._icons:Fuzzy(ref)
+        if id then return id end
+    end
+    return nil
+end
+
 function Velvet:Notify(opts)
     opts = opts or {}
     local title = opts.Title or "Velvet"
@@ -819,8 +846,9 @@ function Velvet:CreateWindow(opts)
 
     -- floating toggle pill
     -- toggle pill - supports text OR icon, auto-sizes
-    local pillText = opts.ToggleText or opts.ToggleIcon or "V"
-    local pillIsIcon = opts.ToggleIcon ~= nil
+    local resolvedToggleIcon = Velvet:ResolveIcon(opts.ToggleIcon)
+    local pillText = opts.ToggleText or resolvedToggleIcon or "V"
+    local pillIsIcon = resolvedToggleIcon ~= nil
     local pillH = mobile and 48 or 36
 
     -- calc width: auto-size for text length
@@ -852,7 +880,7 @@ function Velvet:CreateWindow(opts)
             Size = UDim2.new(0, mobile and 22 or 18, 0, mobile and 22 or 18),
             Position = UDim2.new(0.5, mobile and -11 or -9, 0.5, mobile and -11 or -9),
             BackgroundTransparency = 1,
-            Image = opts.ToggleIcon,
+            Image = resolvedToggleIcon,
             ImageColor3 = theme.Text,
             ScaleType = Enum.ScaleType.Fit,
             ZIndex = 101,
@@ -1070,6 +1098,9 @@ function Velvet:CreateWindow(opts)
             _elements = {},
         }
 
+        -- resolve icon (can be lucide name, asset id, or url)
+        local iconUrl = Velvet:ResolveIcon(icon)
+
         -- tab button
         local tabBtn = create("TextButton", {
             Size = UDim2.new(1, 0, 0, mobile and 40 or 32),
@@ -1083,11 +1114,29 @@ function Velvet:CreateWindow(opts)
         })
         addCorner(tabBtn, 6)
 
+        -- icon (if provided)
+        local iconImg
+        local iconSize = mobile and 18 or 14
+        local textOffset = mobile and 0 or 10
+        if iconUrl then
+            iconImg = create("ImageLabel", {
+                Size = UDim2.new(0, iconSize, 0, iconSize),
+                Position = UDim2.new(0, mobile and (22 - iconSize/2) or 8, 0.5, -iconSize/2),
+                BackgroundTransparency = 1,
+                Image = iconUrl,
+                ImageColor3 = theme.TextDim,
+                ScaleType = Enum.ScaleType.Fit,
+                ZIndex = 7,
+                Parent = tabBtn,
+            })
+            textOffset = mobile and 0 or (8 + iconSize + 6)
+        end
+
         local tabLabel = create("TextLabel", {
-            Size = UDim2.new(1, mobile and 0 or -12, 1, 0),
-            Position = UDim2.new(0, mobile and 0 or 10, 0, 0),
+            Size = UDim2.new(1, mobile and 0 or -(textOffset + 4), 1, 0),
+            Position = UDim2.new(0, textOffset, 0, 0),
             BackgroundTransparency = 1,
-            Text = mobile and (name:sub(1,2)) or name,
+            Text = mobile and (iconUrl and "" or name:sub(1,2)) or name,
             TextColor3 = theme.TextDim,
             TextSize = mobile and 13 or 12,
             Font = Enum.Font.GothamMedium,
@@ -1124,6 +1173,7 @@ function Velvet:CreateWindow(opts)
         tab._content = tabContent
         tab._btn = tabBtn
         tab._label = tabLabel
+        tab._icon = iconImg
 
         local function activate()
             -- deactivate all
@@ -1131,11 +1181,13 @@ function Velvet:CreateWindow(opts)
                 t._content.Visible = false
                 tween(t._label, {TextColor3 = theme.TextDim}, 0.15)
                 tween(t._btn, {BackgroundTransparency = 1}, 0.15)
+                if t._icon then tween(t._icon, {ImageColor3 = theme.TextDim}, 0.15) end
             end
             -- activate this
             tabContent.Visible = true
             tween(tabLabel, {TextColor3 = theme.Text}, 0.15)
             tween(tabBtn, {BackgroundTransparency = 0.85}, 0.15)
+            if iconImg then tween(iconImg, {ImageColor3 = theme.Text}, 0.15) end
 
             -- move indicator
             local yPos = (tabIdx - 1) * (mobile and 42 or 34) + (mobile and 12 or 8)
