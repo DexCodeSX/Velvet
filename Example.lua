@@ -5,17 +5,11 @@
 ----------------------------------------------------------------
 -- LOAD (pick one method)
 ----------------------------------------------------------------
--- method 1: github raw (needs public repo)
--- local Velvet = loadstring(game:HttpGet("https://raw.githubusercontent.com/DexCodeSX/Velvet/main/Library.lua"))()
--- local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/DexCodeSX/Velvet/main/addons/SaveManager.lua"))()
--- local ThemeManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/DexCodeSX/Velvet/main/addons/ThemeManager.lua"))()
--- local Icons = loadstring(game:HttpGet("https://raw.githubusercontent.com/DexCodeSX/Velvet/main/addons/Icons.lua"))()
-
--- method 2: local files (delta workspace)
-local Velvet = loadstring(readfile("Velvet/Library.lua"))()
-local SaveManager = loadstring(readfile("Velvet/addons/SaveManager.lua"))()
-local ThemeManager = loadstring(readfile("Velvet/addons/ThemeManager.lua"))()
-local Icons = loadstring(readfile("Velvet/addons/Icons.lua"))()
+local repo = "https://raw.githubusercontent.com/DexCodeSX/Velvet/main/"
+local Velvet = loadstring(game:HttpGet(repo .. "Library.lua"))()
+local SaveManager = loadstring(game:HttpGet(repo .. "addons/SaveManager.lua"))()
+local ThemeManager = loadstring(game:HttpGet(repo .. "addons/ThemeManager.lua"))()
+local Icons = loadstring(game:HttpGet(repo .. "addons/Icons.lua"))()
 
 ----------------------------------------------------------------
 -- SETUP
