@@ -19,6 +19,8 @@ local Velvet = {
     _connections = {},
     _listeners = {},
     _elements = {},
+    _errorLog = {},
+    _onError = nil,
     _version = "2.0.0"
 }
 
@@ -124,6 +126,51 @@ local function hexToColor3(hex)
     return Color3.fromRGB(r, g, b)
 end
 
+-- error handling
+local function velvetError(source, err)
+    local trace = debug.traceback(tostring(err), 3)
+    local entry = {
+        source = source,
+        message = tostring(err),
+        traceback = trace,
+        time = os.clock(),
+    }
+    table.insert(Velvet._errorLog, entry)
+    if #Velvet._errorLog > 50 then table.remove(Velvet._errorLog, 1) end
+
+    warn(`[Velvet] {source}: {err}`)
+
+    if Velvet._onError then
+        pcall(Velvet._onError, entry)
+    end
+
+    -- show notification if Notify is available
+    pcall(function()
+        Velvet:Notify({
+            Title = "Velvet Error",
+            Content = source .. ": " .. tostring(err):sub(1, 120),
+            Duration = 5,
+            Type = "error",
+        })
+    end)
+end
+
+local function safecall(source, fn, ...)
+    local args = table.pack(...)
+    task.spawn(function()
+        local ok, err = pcall(fn, table.unpack(args, 1, args.n))
+        if not ok then velvetError(source, err) end
+    end)
+end
+
+function Velvet:OnError(fn)
+    self._onError = fn
+end
+
+function Velvet:GetErrors()
+    return self._errorLog
+end
+
 -- flag listener system
 function Velvet:OnFlagChanged(id, fn)
     if not self._listeners[id] then self._listeners[id] = {} end
@@ -133,7 +180,7 @@ end
 local function fireListeners(id, val)
     local cbs = Velvet._listeners[id]
     if cbs then
-        for _, fn in cbs do task.spawn(fn, val) end
+        for _, fn in cbs do safecall(`Listener:{id}`, fn, val) end
     end
 end
 
@@ -344,7 +391,7 @@ function Velvet:KeySystem(opts)
     if savedKey then
         for _, k in keys do
             if savedKey == k then
-                task.spawn(cb, true)
+                safecall("KeySystem", cb, true)
                 return true
             end
         end
@@ -545,7 +592,7 @@ function Velvet:KeySystem(opts)
             tween(keyGui, {BackgroundTransparency = 1}, 0.3)
             task.delay(0.3, function()
                 pcall(function() keyGui:Destroy() end)
-                task.spawn(cb, true)
+                safecall("KeySystem", cb, true)
             end)
         else
             statusLabel.Text = "Invalid key!"
@@ -1489,7 +1536,7 @@ function Velvet:CreateWindow(opts)
                     end
                     Velvet.Flags[id] = v
                     fireListeners(id, v)
-                    if not silent then task.spawn(cb, v) end
+                    if not silent then safecall(`Toggle:{id}`, cb, v) end
                 end
 
                 -- click zone
@@ -1603,7 +1650,7 @@ function Velvet:CreateWindow(opts)
                     valLabel.Text = tostring(v) .. suffix
                     Velvet.Flags[id] = v
                     fireListeners(id, v)
-                    if not silent then task.spawn(cb, v) end
+                    if not silent then safecall(`Slider:{id}`, cb, v) end
                 end
 
                 -- interaction
@@ -1696,7 +1743,7 @@ function Velvet:CreateWindow(opts)
                     task.delay(0.12, function()
                         tween(btn, {BackgroundColor3 = theme.Surface}, 0.15)
                     end)
-                    task.spawn(cb)
+                    safecall(`Button:{opts.Text or "?"}`, cb)
                 end)
 
                 return btn
@@ -1890,7 +1937,7 @@ function Velvet:CreateWindow(opts)
                             Velvet.Flags[id] = multi and selected or selected
                             fireListeners(id, multi and selected or selected)
                             refreshItems()
-                            task.spawn(cb, multi and selected or selected)
+                            safecall(`Dropdown:{id}`, cb, multi and selected or selected)
                         end)
                     end
                 end
@@ -2000,7 +2047,7 @@ function Velvet:CreateWindow(opts)
                     value = textBox.Text
                     Velvet.Flags[id] = value
                     fireListeners(id, value)
-                    task.spawn(cb, value, enterPressed)
+                    safecall(`Input:{id}`, cb, value, enterPressed)
                 end)
 
                 Velvet.Flags[id] = value
@@ -2093,17 +2140,17 @@ function Velvet:CreateWindow(opts)
 
                     if mode == "Toggle" then
                         active = not active
-                        task.spawn(cb, active)
+                        safecall(`Keybind:{id}`, cb, active)
                     elseif mode == "Hold" then
                         active = true
-                        task.spawn(cb, true)
+                        safecall(`Keybind:{id}`, cb, true)
                     end
                 end)
 
                 UserInputService.InputEnded:Connect(function(inp)
                     if mode == "Hold" and inp.KeyCode == key and active then
                         active = false
-                        task.spawn(cb, false)
+                        safecall(`Keybind:{id}`, cb, false)
                     end
                 end)
 
@@ -2301,7 +2348,7 @@ function Velvet:CreateWindow(opts)
                     hexBox.Text = color3ToHex(color)
                     Velvet.Flags[id] = color
                     fireListeners(id, color)
-                    if not silent then task.spawn(cb, color) end
+                    if not silent then safecall(`ColorPicker:{id}`, cb, color) end
                 end
 
                 -- canvas drag
@@ -2500,7 +2547,7 @@ function Velvet:CreateWindow(opts)
                 })
 
                 local barBg = create("Frame", {
-                    Size = UDim2.new(1, 0, 0, 10),
+                    Size = UDim2.new(1, 0, 0, 12),
                     Position = UDim2.new(0, 0, 0, 18),
                     BackgroundColor3 = theme.Surface,
                     BackgroundTransparency = 0.2,
@@ -2509,7 +2556,7 @@ function Velvet:CreateWindow(opts)
                     ZIndex = 7,
                     Parent = elem
                 })
-                addCorner(barBg, 5)
+                addCorner(barBg, 4)
                 addStroke(barBg, theme.Border, 1, 0.6)
 
                 local fill = create("Frame", {

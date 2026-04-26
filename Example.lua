@@ -161,10 +161,11 @@ log:Error("this is an error")
 
 -- progress demo
 task.spawn(function()
-    for i = 1, 100, 4 do
+    for i = 1, 97, 4 do
         bar:Set(i)
         task.wait(0.06)
     end
+    bar:Set(100)
     log:Success("XP bar done")
 end)
 
