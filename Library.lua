@@ -720,7 +720,7 @@ function Velvet:CreateWindow(opts)
         Parent = header
     })
 
-    -- logo dot
+    -- logo dot (gently pulses so window feels "alive")
     local logoDot = create("Frame", {
         Size = UDim2.new(0, 7, 0, 7),
         Position = UDim2.new(0, 16, 0.5, -3),
@@ -730,6 +730,27 @@ function Velvet:CreateWindow(opts)
         Parent = header
     })
     addCorner(logoDot, 4)
+    -- pulse halo
+    local logoHalo = create("Frame", {
+        Size = UDim2.new(0, 7, 0, 7),
+        Position = UDim2.new(0, 16, 0.5, -3),
+        BackgroundColor3 = theme.Accent,
+        BackgroundTransparency = 0.6,
+        BorderSizePixel = 0,
+        ZIndex = 5,
+        Parent = header,
+    })
+    addCorner(logoHalo, 4)
+    task.spawn(function()
+        while logoHalo.Parent do
+            tween(logoHalo, {Size = UDim2.new(0, 16, 0, 16), Position = UDim2.new(0, 12, 0.5, -8), BackgroundTransparency = 1}, 1.4, Enum.EasingStyle.Sine)
+            task.wait(1.4)
+            logoHalo.Size = UDim2.new(0, 7, 0, 7)
+            logoHalo.Position = UDim2.new(0, 16, 0.5, -3)
+            logoHalo.BackgroundTransparency = 0.6
+            task.wait(0.4)
+        end
+    end)
 
     -- title
     create("TextLabel", {
@@ -855,10 +876,11 @@ function Velvet:CreateWindow(opts)
         }
     })
 
-    -- active tab indicator
+    -- active tab indicator (height adapts to tab content)
+    local indicatorH = mobile and 28 or 18
     local tabIndicator = create("Frame", {
-        Size = UDim2.new(0, 3, 0, 20),
-        Position = UDim2.new(0, 2, 0, 12),
+        Size = UDim2.new(0, 3, 0, indicatorH),
+        Position = UDim2.new(0, 2, 0, 8),
         BackgroundColor3 = theme.Accent,
         BorderSizePixel = 0,
         ZIndex = 7,
@@ -1269,8 +1291,12 @@ function Velvet:CreateWindow(opts)
             tween(tabBtn, {BackgroundTransparency = 0.85}, 0.15)
             if iconImg then tween(iconImg, {ImageColor3 = theme.Text}, 0.15) end
 
-            -- move indicator with subtle elastic landing
-            local yPos = (tabIdx - 1) * (mobile and 46 or 34) + (mobile and 12 or 8)
+            -- move indicator — center aligned to whatever the tab btn actually has (icon-only / text-only / both)
+            local btnH = mobile and 44 or 32
+            local step = btnH + 2 -- list padding
+            local listTop = 8 -- tabList offset (6) + padTop (2)
+            local centerY = listTop + (tabIdx - 1) * step + btnH / 2
+            local yPos = centerY - indicatorH / 2
             tween(tabIndicator, {Position = UDim2.new(0, 2, 0, yPos)}, 0.32, Enum.EasingStyle.Back)
 
             self.ActiveTab = tab
