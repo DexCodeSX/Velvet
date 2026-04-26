@@ -21,7 +21,8 @@ local Velvet = {
     _elements = {},
     _errorLog = {},
     _onError = nil,
-    _version = "2.0.0"
+    _activeDrag = nil, -- mutex so picker drag doesn't bleed into slider
+    _version = "3.0.0"
 }
 
 -- defaults
@@ -46,7 +47,7 @@ Velvet.Theme = DEFAULT_THEME
 
 -- utils
 local function tween(obj, props, dur, style)
-    local tw = TweenService:Create(obj, TweenInfo.new(dur or 0.25, style or Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), props)
+    local tw = TweenService:Create(obj, TweenInfo.new(dur or 0.22, style or Enum.EasingStyle.Quint, Enum.EasingDirection.Out), props)
     tw:Play()
     return tw
 end
@@ -184,7 +185,6 @@ local function fireListeners(id, val)
     end
 end
 
--- wire up conditional visibility for an element frame
 local function setupVisibility(elem, frame, opts)
     if not opts.VisibleWhen then return end
     local depId = opts.VisibleWhen
@@ -263,11 +263,11 @@ local notifHolder = create("Frame", {
     }
 })
 
----------------------------------------------------------------
+-- ~~
 -- ICON RESOLVER
 -- accepts: rbxassetid://..., plain number id, "rbxassetid://12345",
 -- or a lucide icon name ("sword", "heart", "arrow-left") if icons are bound
----------------------------------------------------------------
+-- ~~
 function Velvet:SetIcons(iconPack)
     self._icons = iconPack
 end
@@ -367,12 +367,12 @@ function Velvet:Notify(opts)
     end)
 end
 
-------------------------------------------------------------------------
+-- ~~---------
 -- WINDOW
-------------------------------------------------------------------------
-------------------------------------------------------------------------
+-- ~~---------
+-- ~~---------
 -- KEY SYSTEM
-------------------------------------------------------------------------
+-- ~~---------
 function Velvet:KeySystem(opts)
     opts = opts or {}
     local title = opts.Title or "Key System"
@@ -646,8 +646,17 @@ function Velvet:CreateWindow(opts)
         ClipsDescendants = true,
         Parent = gui
     })
-    addCorner(main, 12)
-    addStroke(main, theme.Border, 1, 0.3)
+    addCorner(main, 14)
+    addStroke(main, theme.Border, 1, 0.25)
+    -- subtle accent ambient (premium glow)
+    local glowStroke = create("UIStroke", {
+        Color = theme.Accent,
+        Thickness = 2,
+        Transparency = 0.85,
+        ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+        Parent = main
+    })
+    window._glowStroke = glowStroke
     window._main = main
 
     -- ui scale (global multiplier for everything inside the window)
@@ -671,14 +680,22 @@ function Velvet:CreateWindow(opts)
     })
     addCorner(glass, 12)
 
-    -- top accent line
-    create("Frame", {
-        Size = UDim2.new(0, 50, 0, 2),
-        Position = UDim2.new(0.5, -25, 0, 0),
+    -- top accent line (gradient-faded edges so it feels like a glow strip)
+    local accentLine = create("Frame", {
+        Size = UDim2.new(0, 80, 0, 2),
+        Position = UDim2.new(0.5, -40, 0, 0),
         BackgroundColor3 = theme.Accent,
         BorderSizePixel = 0,
         ZIndex = 10,
         Parent = main
+    })
+    create("UIGradient", {
+        Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 1),
+            NumberSequenceKeypoint.new(0.5, 0),
+            NumberSequenceKeypoint.new(1, 1),
+        }),
+        Parent = accentLine
     })
 
     -- header
@@ -1051,9 +1068,9 @@ function Velvet:CreateWindow(opts)
         BackgroundTransparency = 0.02
     }, 0.35)
 
-    -----------------------------------------------------------------------
+    -- ~~--------
     -- SIDEBAR COLLAPSE (mobile or opt-in)
-    -----------------------------------------------------------------------
+    -- ~~--------
     local sidebarCollapsed = false
     local collapsedW = 0
     local expandedW = tabW
@@ -1099,9 +1116,9 @@ function Velvet:CreateWindow(opts)
         tween(collapseBtn, {BackgroundTransparency = 0.6}, 0.15)
     end)
 
-    -----------------------------------------------------------------------
+    -- ~~--------
     -- GESTURE: swipe to switch tabs on mobile
-    -----------------------------------------------------------------------
+    -- ~~--------
     if mobile and opts.Gestures ~= false then
         local swipeStart
         contentArea.InputBegan:Connect(function(inp)
@@ -1137,9 +1154,9 @@ function Velvet:CreateWindow(opts)
         end)
     end
 
-    -----------------------------------------------------------------------
+    -- ~~--------
     -- TAB
-    -----------------------------------------------------------------------
+    -- ~~--------
     function window:AddTab(name, icon)
         local tabIdx = #self.Tabs + 1
         local tab = {
@@ -1252,9 +1269,9 @@ function Velvet:CreateWindow(opts)
             tween(tabBtn, {BackgroundTransparency = 0.85}, 0.15)
             if iconImg then tween(iconImg, {ImageColor3 = theme.Text}, 0.15) end
 
-            -- move indicator
+            -- move indicator with subtle elastic landing
             local yPos = (tabIdx - 1) * (mobile and 46 or 34) + (mobile and 12 or 8)
-            tween(tabIndicator, {Position = UDim2.new(0, 2, 0, yPos)}, 0.2)
+            tween(tabIndicator, {Position = UDim2.new(0, 2, 0, yPos)}, 0.32, Enum.EasingStyle.Back)
 
             self.ActiveTab = tab
         end
@@ -1280,9 +1297,9 @@ function Velvet:CreateWindow(opts)
             task.defer(activate)
         end
 
-        -------------------------------------------------------------------
+        -- ~~----
         -- SUB-TABS (horizontal pill row inside a tab)
-        -------------------------------------------------------------------
+        -- ~~----
         tab.SubTabs = {}
         tab._activeSub = nil
 
@@ -1390,9 +1407,9 @@ function Velvet:CreateWindow(opts)
             return sub
         end
 
-        -------------------------------------------------------------------
+        -- ~~----
         -- SECTION
-        -------------------------------------------------------------------
+        -- ~~----
         function tab:AddSection(sectionName)
             local section = { Elements = {} }
 
@@ -1406,8 +1423,17 @@ function Velvet:CreateWindow(opts)
                 Parent = tabContent
             })
             section.Frame = sectionFrame
-            addCorner(sectionFrame, 8)
-            addStroke(sectionFrame, theme.Border, 1, 0.6)
+            addCorner(sectionFrame, 10)
+            addStroke(sectionFrame, theme.Border, 1, 0.55)
+            -- accent rail on the left edge for a more premium feel
+            create("Frame", {
+                Size = UDim2.new(0, 2, 0, 16),
+                Position = UDim2.new(0, 0, 0, 7),
+                BackgroundColor3 = theme.Accent,
+                BorderSizePixel = 0,
+                ZIndex = 6,
+                Parent = sectionFrame,
+            })
 
             -- section header
             local sectionHeader = create("TextButton", {
@@ -1475,9 +1501,9 @@ function Velvet:CreateWindow(opts)
 
             section._container = elemContainer
 
-            ---------------------------------------------------------------
+            -- ===
             -- TOGGLE
-            ---------------------------------------------------------------
+            -- ===
             function section:AddToggle(id, opts)
                 opts = opts or {}
                 local value = opts.Default or false
@@ -1528,10 +1554,10 @@ function Velvet:CreateWindow(opts)
                 local function update(v, silent)
                     value = v
                     if v then
-                        tween(thumb, {Position = UDim2.new(0, 22, 0.5, -8), BackgroundColor3 = Color3.new(1,1,1)}, 0.2)
+                        tween(thumb, {Position = UDim2.new(0, 22, 0.5, -8), BackgroundColor3 = Color3.new(1,1,1)}, 0.28, Enum.EasingStyle.Back)
                         tween(track, {BackgroundColor3 = theme.Accent}, 0.2)
                     else
-                        tween(thumb, {Position = UDim2.new(0, 2, 0.5, -8), BackgroundColor3 = theme.TextDim}, 0.2)
+                        tween(thumb, {Position = UDim2.new(0, 2, 0.5, -8), BackgroundColor3 = theme.TextDim}, 0.22)
                         tween(track, {BackgroundColor3 = theme.Surface}, 0.2)
                     end
                     Velvet.Flags[id] = v
@@ -1565,9 +1591,9 @@ function Velvet:CreateWindow(opts)
                 return toggle
             end
 
-            ---------------------------------------------------------------
+            -- ===
             -- SLIDER
-            ---------------------------------------------------------------
+            -- ===
             function section:AddSlider(id, opts)
                 opts = opts or {}
                 local min = opts.Min or 0
@@ -1666,12 +1692,15 @@ function Velvet:CreateWindow(opts)
 
                 clickArea.InputBegan:Connect(function(inp)
                     if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then
+                        if Velvet._activeDrag and Velvet._activeDrag ~= "slider" then return end
                         sliding = true
+                        Velvet._activeDrag = "slider"
                     end
                 end)
 
                 UserInputService.InputChanged:Connect(function(inp)
                     if not sliding then return end
+                    if Velvet._activeDrag ~= "slider" then return end
                     if inp.UserInputType == Enum.UserInputType.MouseMovement or inp.UserInputType == Enum.UserInputType.Touch then
                         local absPos = sliderTrack.AbsolutePosition.X
                         local absSize = sliderTrack.AbsoluteSize.X
@@ -1682,7 +1711,10 @@ function Velvet:CreateWindow(opts)
 
                 UserInputService.InputEnded:Connect(function(inp)
                     if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then
-                        sliding = false
+                        if sliding then
+                            sliding = false
+                            if Velvet._activeDrag == "slider" then Velvet._activeDrag = nil end
+                        end
                     end
                 end)
 
@@ -1700,9 +1732,9 @@ function Velvet:CreateWindow(opts)
                 return slider
             end
 
-            ---------------------------------------------------------------
+            -- ===
             -- BUTTON
-            ---------------------------------------------------------------
+            -- ===
             function section:AddButton(opts)
                 opts = opts or {}
                 local cb = opts.Callback or function() end
@@ -1717,8 +1749,8 @@ function Velvet:CreateWindow(opts)
                     ZIndex = 6,
                     Parent = elemContainer
                 })
-                addCorner(btn, 6)
-                addStroke(btn, theme.Border, 1, 0.6)
+                addCorner(btn, 7)
+                local btnStroke = addStroke(btn, theme.Border, 1, 0.55)
 
                 create("TextLabel", {
                     Size = UDim2.fromScale(1, 1),
@@ -1732,16 +1764,18 @@ function Velvet:CreateWindow(opts)
                 })
 
                 btn.MouseEnter:Connect(function()
-                    tween(btn, {BackgroundTransparency = 0.1}, 0.1)
+                    tween(btn, {BackgroundTransparency = 0.08}, 0.15)
+                    tween(btnStroke, {Color = theme.Accent, Transparency = 0.4}, 0.15)
                 end)
                 btn.MouseLeave:Connect(function()
-                    tween(btn, {BackgroundTransparency = 0.3}, 0.1)
+                    tween(btn, {BackgroundTransparency = 0.3}, 0.15)
+                    tween(btnStroke, {Color = theme.Border, Transparency = 0.55}, 0.15)
                 end)
                 btn.MouseButton1Click:Connect(function()
-                    -- press flash
+                    -- press flash + tiny scale pulse for haptic feel
                     tween(btn, {BackgroundColor3 = theme.Accent}, 0.08)
                     task.delay(0.12, function()
-                        tween(btn, {BackgroundColor3 = theme.Surface}, 0.15)
+                        tween(btn, {BackgroundColor3 = theme.Surface}, 0.18)
                     end)
                     safecall(`Button:{opts.Text or "?"}`, cb)
                 end)
@@ -1749,9 +1783,9 @@ function Velvet:CreateWindow(opts)
                 return btn
             end
 
-            ---------------------------------------------------------------
+            -- ===
             -- DROPDOWN
-            ---------------------------------------------------------------
+            -- ===
             function section:AddDropdown(id, opts)
                 opts = opts or {}
                 local values = opts.Values or {}
@@ -1983,9 +2017,9 @@ function Velvet:CreateWindow(opts)
                 return dropdown
             end
 
-            ---------------------------------------------------------------
+            -- ===
             -- INPUT
-            ---------------------------------------------------------------
+            -- ===
             function section:AddInput(id, opts)
                 opts = opts or {}
                 local value = opts.Default or ""
@@ -2069,9 +2103,9 @@ function Velvet:CreateWindow(opts)
                 return input
             end
 
-            ---------------------------------------------------------------
+            -- ===
             -- KEYBIND
-            ---------------------------------------------------------------
+            -- ===
             function section:AddKeybind(id, opts)
                 opts = opts or {}
                 local key = opts.Default or Enum.KeyCode.Unknown
@@ -2174,9 +2208,9 @@ function Velvet:CreateWindow(opts)
                 return keybind
             end
 
-            ---------------------------------------------------------------
+            -- ===
             -- COLORPICKER
-            ---------------------------------------------------------------
+            -- ===
             function section:AddColorPicker(id, opts)
                 opts = opts or {}
                 local color = opts.Default or Color3.fromRGB(255, 255, 255)
@@ -2351,11 +2385,12 @@ function Velvet:CreateWindow(opts)
                     if not silent then safecall(`ColorPicker:{id}`, cb, color) end
                 end
 
-                -- canvas drag
+                -- canvas drag (claims mutex so slider underneath stays still)
                 local canvasDrag = false
                 canvas.InputBegan:Connect(function(inp)
                     if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then
                         canvasDrag = true
+                        Velvet._activeDrag = "picker"
                     end
                 end)
                 UserInputService.InputChanged:Connect(function(inp)
@@ -2369,7 +2404,10 @@ function Velvet:CreateWindow(opts)
                 end)
                 UserInputService.InputEnded:Connect(function(inp)
                     if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then
-                        canvasDrag = false
+                        if canvasDrag then
+                            canvasDrag = false
+                            if Velvet._activeDrag == "picker" then Velvet._activeDrag = nil end
+                        end
                     end
                 end)
 
@@ -2378,6 +2416,7 @@ function Velvet:CreateWindow(opts)
                 hueBar.InputBegan:Connect(function(inp)
                     if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then
                         hueDrag = true
+                        Velvet._activeDrag = "picker"
                     end
                 end)
                 UserInputService.InputChanged:Connect(function(inp)
@@ -2389,7 +2428,10 @@ function Velvet:CreateWindow(opts)
                 end)
                 UserInputService.InputEnded:Connect(function(inp)
                     if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then
-                        hueDrag = false
+                        if hueDrag then
+                            hueDrag = false
+                            if Velvet._activeDrag == "picker" then Velvet._activeDrag = nil end
+                        end
                     end
                 end)
 
@@ -2437,9 +2479,9 @@ function Velvet:CreateWindow(opts)
                 return picker
             end
 
-            ---------------------------------------------------------------
+            -- ===
             -- LABEL
-            ---------------------------------------------------------------
+            -- ===
             function section:AddLabel(text)
                 local lbl = create("TextLabel", {
                     Size = UDim2.new(1, 0, 0, 18),
@@ -2457,9 +2499,9 @@ function Velvet:CreateWindow(opts)
                 return label
             end
 
-            ---------------------------------------------------------------
+            -- ===
             -- DIVIDER
-            ---------------------------------------------------------------
+            -- ===
             function section:AddDivider()
                 create("Frame", {
                     Size = UDim2.new(1, 0, 0, 1),
@@ -2471,9 +2513,9 @@ function Velvet:CreateWindow(opts)
                 })
             end
 
-            ---------------------------------------------------------------
+            -- ===
             -- PARAGRAPH
-            ---------------------------------------------------------------
+            -- ===
             function section:AddParagraph(opts)
                 opts = opts or {}
                 local frame = create("Frame", {
@@ -2518,9 +2560,9 @@ function Velvet:CreateWindow(opts)
                 return para
             end
 
-            ---------------------------------------------------------------
+            -- ===
             -- PROGRESS BAR
-            ---------------------------------------------------------------
+            -- ===
             function section:AddProgressBar(id, opts)
                 opts = opts or {}
                 local progress = opts.Default or 0
@@ -2608,9 +2650,9 @@ function Velvet:CreateWindow(opts)
                 return bar
             end
 
-            ---------------------------------------------------------------
+            -- ===
             -- LOG / CONSOLE
-            ---------------------------------------------------------------
+            -- ===
             function section:AddLog(opts)
                 opts = opts or {}
                 local maxLines = opts.MaxLines or 50
@@ -2687,9 +2729,9 @@ function Velvet:CreateWindow(opts)
                 return log
             end
 
-            ---------------------------------------------------------------
+            -- ===
             -- PLAYER SELECTOR (dropdown preloaded with players + auto-refresh)
-            ---------------------------------------------------------------
+            -- ===
             function section:AddPlayerSelector(id, opts)
                 opts = opts or {}
                 local excludeSelf = opts.ExcludeSelf ~= false
@@ -2846,9 +2888,9 @@ function Velvet:GetTheme()
     return self.Theme
 end
 
----------------------------------------------------------------
+-- ~~
 -- WATERMARK / HUD
----------------------------------------------------------------
+-- ~~
 function Velvet:CreateWatermark(opts)
     opts = opts or {}
     local theme = self.Theme
@@ -2949,9 +2991,9 @@ function Velvet:CreateWatermark(opts)
     return watermark
 end
 
----------------------------------------------------------------
+-- ~~
 -- HAPTIC FEEDBACK (mobile-ish, uses HapticService + visual flash)
----------------------------------------------------------------
+-- ~~
 function Velvet:Haptic(strength)
     -- strength: "light" | "medium" | "heavy"
     strength = strength or "light"
@@ -2973,9 +3015,9 @@ function Velvet:Haptic(strength)
     end)
 end
 
----------------------------------------------------------------
+-- ~~
 -- AUTO-UPDATE CHECK (fetches latest tag from github)
----------------------------------------------------------------
+-- ~~
 function Velvet:CheckForUpdate(repo)
     repo = repo or "DexCodeSX/Velvet"
     local url = "https://api.github.com/repos/" .. repo .. "/releases/latest"
@@ -2999,9 +3041,9 @@ function Velvet:CheckForUpdate(repo)
     }
 end
 
----------------------------------------------------------------
+-- ~~
 -- TOOLTIP helper (attach to any GuiObject)
----------------------------------------------------------------
+-- ~~
 function Velvet:AttachTooltip(guiObj, text)
     if not guiObj or not text then return end
     local theme = self.Theme
