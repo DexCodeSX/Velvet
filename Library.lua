@@ -801,15 +801,14 @@ function Velvet:CreateWindow(opts)
     addCorner(searchBar, 6)
     local searchStroke = addStroke(searchBar, theme.Border, 1, 0.5)
 
-    -- magnifier glyph (just a textlabel for portability)
-    create("TextLabel", {
-        Size = UDim2.new(0, 18, 1, 0),
-        Position = UDim2.new(0, 4, 0, 0),
+    -- search icon
+    create("ImageLabel", {
+        Size = UDim2.new(0, 14, 0, 14),
+        Position = UDim2.new(0, 6, 0.5, -7),
         BackgroundTransparency = 1,
-        Text = "⌕",
-        TextColor3 = theme.TextMuted,
-        TextSize = 14,
-        Font = Enum.Font.GothamBold,
+        Image = "rbxassetid://121018724060431",
+        ImageColor3 = theme.TextMuted,
+        ScaleType = Enum.ScaleType.Fit,
         ZIndex = 8,
         Parent = searchBar,
     })
@@ -852,18 +851,25 @@ function Velvet:CreateWindow(opts)
             Parent = searchBar,
         })
 
-        -- × glyph that appears only when expanded, used to collapse
+        -- close icon that appears only when expanded, used to collapse
         closeBtn = create("TextButton", {
             Size = UDim2.new(0, 22, 1, 0),
             Position = UDim2.new(1, -22, 0, 0),
             BackgroundTransparency = 1,
-            Text = "×",
-            TextColor3 = theme.TextMuted,
-            TextSize = 18,
-            Font = Enum.Font.GothamBold,
+            Text = "",
             ZIndex = 10,
             Visible = false,
             Parent = searchBar,
+        })
+        create("ImageLabel", {
+            Size = UDim2.new(0, 12, 0, 12),
+            Position = UDim2.new(0.5, -6, 0.5, -6),
+            BackgroundTransparency = 1,
+            Image = "rbxassetid://110786993356448",
+            ImageColor3 = theme.TextMuted,
+            ScaleType = Enum.ScaleType.Fit,
+            ZIndex = 11,
+            Parent = closeBtn,
         })
 
         local function collapse()
@@ -941,14 +947,21 @@ function Velvet:CreateWindow(opts)
         Position = UDim2.new(1, -36, 0.5, -12),
         BackgroundColor3 = theme.Error,
         BackgroundTransparency = 0.6,
-        Text = "x",
-        TextColor3 = theme.Text,
-        TextSize = 14,
-        Font = Enum.Font.GothamBold,
+        Text = "",
         BorderSizePixel = 0,
         ZIndex = 7,
         AutoButtonColor = false,
         Parent = header
+    })
+    create("ImageLabel", {
+        Size = UDim2.new(0, 12, 0, 12),
+        Position = UDim2.new(0.5, -6, 0.5, -6),
+        BackgroundTransparency = 1,
+        Image = "rbxassetid://110786993356448",
+        ImageColor3 = theme.Text,
+        ScaleType = Enum.ScaleType.Fit,
+        ZIndex = 8,
+        Parent = closeBtn,
     })
     addCorner(closeBtn, 6)
 
@@ -965,14 +978,21 @@ function Velvet:CreateWindow(opts)
         Position = UDim2.new(1, -66, 0.5, -12),
         BackgroundColor3 = theme.Warning,
         BackgroundTransparency = 0.6,
-        Text = "-",
-        TextColor3 = theme.Text,
-        TextSize = 16,
-        Font = Enum.Font.GothamBold,
+        Text = "",
         BorderSizePixel = 0,
         ZIndex = 7,
         AutoButtonColor = false,
         Parent = header
+    })
+    create("ImageLabel", {
+        Size = UDim2.new(0, 12, 0, 12),
+        Position = UDim2.new(0.5, -6, 0.5, -6),
+        BackgroundTransparency = 1,
+        Image = "rbxassetid://118026365011536",
+        ImageColor3 = theme.Text,
+        ScaleType = Enum.ScaleType.Fit,
+        ZIndex = 8,
+        Parent = minBtn,
     })
     addCorner(minBtn, 6)
 
@@ -1270,14 +1290,21 @@ function Velvet:CreateWindow(opts)
         Position = UDim2.new(1, -96, 0.5, -12),
         BackgroundColor3 = theme.Info,
         BackgroundTransparency = 0.6,
-        Text = "=",
-        TextColor3 = theme.Text,
-        TextSize = 14,
-        Font = Enum.Font.GothamBold,
+        Text = "",
         BorderSizePixel = 0,
         ZIndex = 7,
         AutoButtonColor = false,
         Parent = header
+    })
+    create("ImageLabel", {
+        Size = UDim2.new(0, 12, 0, 12),
+        Position = UDim2.new(0.5, -6, 0.5, -6),
+        BackgroundTransparency = 1,
+        Image = "rbxassetid://97419752870313",
+        ImageColor3 = theme.Text,
+        ScaleType = Enum.ScaleType.Fit,
+        ZIndex = 8,
+        Parent = collapseBtn,
     })
     addCorner(collapseBtn, 6)
     collapseBtn.Visible = opts.SidebarToggle ~= false
