@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="velvetGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#a78bfa"/>
+      <stop offset="50%" stop-color="#7c5cfc"/>
+      <stop offset="100%" stop-color="#4f2ec9"/>
+    </linearGradient>
+    <radialGradient id="velvetGlow" cx="0.5" cy="0.5" r="0.6">
+      <stop offset="0%" stop-color="#7c5cfc" stop-opacity="0.55"/>
+      <stop offset="60%" stop-color="#7c5cfc" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#7c5cfc" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="softBlur" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="2.4"/>
+    </filter>
+  </defs>
+
+  <rect width="256" height="256" rx="56" fill="#0a0a0e"/>
+  <circle cx="128" cy="128" r="120" fill="url(#velvetGlow)"/>
+
+  <g stroke="url(#velvetGrad)" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" fill="none" filter="url(#softBlur)" opacity="0.55">
+    <path d="M 64 60 L 128 196 L 192 60"/>
+  </g>
+
+  <g stroke="url(#velvetGrad)" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 64 60 L 128 196 L 192 60"/>
+  </g>
+
+  <circle cx="128" cy="208" r="5" fill="#fff"/>
+  <circle cx="128" cy="208" r="11" fill="#7c5cfc" opacity="0.35"/>
+</svg>

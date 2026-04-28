@@ -22,7 +22,7 @@ local Velvet = {
     _errorLog = {},
     _onError = nil,
     _activeDrag = nil, -- mutex so picker drag doesn't bleed into slider
-    _version = "3.0.0"
+    _version = "3.1.0"
 }
 
 -- defaults
@@ -183,6 +183,11 @@ local function fireListeners(id, val)
     if cbs then
         for _, fn in cbs do safecall(`Listener:{id}`, fn, val) end
     end
+end
+
+local function tagSearch(frame, text)
+    if not frame or not text then return end
+    frame:SetAttribute("VelvetSearch", string.lower(text))
 end
 
 local function setupVisibility(elem, frame, opts)
@@ -782,6 +787,117 @@ function Velvet:CreateWindow(opts)
         })
     end
 
+    -- search bar (header right, before the 3 buttons; collapses to icon on mobile)
+    local searchBarW = mobile and 28 or 160
+    local searchBar = create("Frame", {
+        Size = UDim2.new(0, searchBarW, 0, 26),
+        Position = UDim2.new(1, -(110 + searchBarW + 6), 0.5, -13),
+        BackgroundColor3 = theme.Surface,
+        BackgroundTransparency = 0.4,
+        BorderSizePixel = 0,
+        ZIndex = 7,
+        Parent = header,
+    })
+    addCorner(searchBar, 6)
+    local searchStroke = addStroke(searchBar, theme.Border, 1, 0.5)
+
+    -- magnifier glyph (just a textlabel for portability)
+    create("TextLabel", {
+        Size = UDim2.new(0, 18, 1, 0),
+        Position = UDim2.new(0, 4, 0, 0),
+        BackgroundTransparency = 1,
+        Text = "⌕",
+        TextColor3 = theme.TextMuted,
+        TextSize = 14,
+        Font = Enum.Font.GothamBold,
+        ZIndex = 8,
+        Parent = searchBar,
+    })
+
+    local searchBox = create("TextBox", {
+        Size = UDim2.new(1, -28, 1, 0),
+        Position = UDim2.new(0, 24, 0, 0),
+        BackgroundTransparency = 1,
+        Text = "",
+        PlaceholderText = "Search...",
+        TextColor3 = theme.Text,
+        PlaceholderColor3 = theme.TextMuted,
+        TextSize = 12,
+        Font = Enum.Font.Gotham,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        ClearTextOnFocus = false,
+        ZIndex = 8,
+        Parent = searchBar,
+        Visible = not mobile,
+    })
+
+    searchBox.Focused:Connect(function()
+        tween(searchStroke, {Color = theme.Accent, Transparency = 0.2}, 0.15)
+    end)
+    searchBox.FocusLost:Connect(function()
+        tween(searchStroke, {Color = theme.Border, Transparency = 0.5}, 0.15)
+    end)
+
+    -- mobile: tap icon to expand into a wide bar that overlays the buttons
+    local mobileExpanded = false
+    if mobile then
+        local tapBtn = create("TextButton", {
+            Size = UDim2.fromScale(1, 1),
+            BackgroundTransparency = 1,
+            Text = "",
+            ZIndex = 9,
+            Parent = searchBar,
+        })
+        tapBtn.MouseButton1Click:Connect(function()
+            mobileExpanded = not mobileExpanded
+            if mobileExpanded then
+                searchBox.Visible = true
+                tween(searchBar, {Size = UDim2.new(0, 200, 0, 26), Position = UDim2.new(1, -210, 0.5, -13)}, 0.2)
+                task.delay(0.2, function() searchBox:CaptureFocus() end)
+            else
+                searchBox.Text = ""
+                searchBox.Visible = false
+                tween(searchBar, {Size = UDim2.new(0, 28, 0, 26), Position = UDim2.new(1, -(110 + 28 + 6), 0.5, -13)}, 0.2)
+                if window._applySearch then window:_applySearch("") end
+            end
+        end)
+    end
+
+    -- core filter, walks every elem frame's VelvetSearch attr
+    function window:_applySearch(q)
+        q = string.lower(q or "")
+        for _, t in self.Tabs do
+            local content = t._content
+            if content then
+                for _, secFrame in content:GetChildren() do
+                    if secFrame:IsA("Frame") then
+                        local anyVisible = false
+                        for _, child in secFrame:GetDescendants() do
+                            if child:IsA("Frame") or child:IsA("TextButton") then
+                                local s = child:GetAttribute("VelvetSearch")
+                                if s then
+                                    local match = q == "" or string.find(s, q, 1, true) ~= nil
+                                    child.Visible = match
+                                    if match then anyVisible = true end
+                                end
+                            end
+                        end
+                        -- hide whole section if nothing matches and there's a query
+                        if q ~= "" then
+                            secFrame.Visible = anyVisible
+                        else
+                            secFrame.Visible = true
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    searchBox:GetPropertyChangedSignal("Text"):Connect(function()
+        window:_applySearch(searchBox.Text)
+    end)
+
     -- close button
     local closeBtn = create("TextButton", {
         Size = UDim2.new(0, 24, 0, 24),
@@ -1247,6 +1363,43 @@ function Velvet:CreateWindow(opts)
             Parent = tabBtn
         })
 
+        -- active toggle badge, top-right corner of tab btn
+        local badge = create("Frame", {
+            Size = UDim2.new(0, 14, 0, 14),
+            Position = UDim2.new(1, -(mobile and 6 or 8), 0, mobile and 4 or 4),
+            BackgroundColor3 = theme.Accent,
+            BorderSizePixel = 0,
+            Visible = false,
+            ZIndex = 8,
+            Parent = tabBtn,
+        })
+        addCorner(badge, 7)
+        local badgeLbl = create("TextLabel", {
+            Size = UDim2.fromScale(1, 1),
+            BackgroundTransparency = 1,
+            Text = "0",
+            TextColor3 = Color3.new(1, 1, 1),
+            TextSize = 9,
+            Font = Enum.Font.GothamBold,
+            ZIndex = 9,
+            Parent = badge,
+        })
+        tab._badge = badge
+        tab._badgeLbl = badgeLbl
+        function tab:_refreshBadge()
+            local n = 0
+            for _, tg in self._toggles or {} do
+                if tg.Get and tg:Get() then n = n + 1 end
+            end
+            if n > 0 then
+                badge.Visible = true
+                badgeLbl.Text = tostring(n)
+                tween(badge, {Size = UDim2.new(0, 14, 0, 14)}, 0.18, Enum.EasingStyle.Back)
+            else
+                badge.Visible = false
+            end
+        end
+
         -- content scroll for this tab
         local tabContent = create("ScrollingFrame", {
             Size = UDim2.fromScale(1, 1),
@@ -1291,7 +1444,7 @@ function Velvet:CreateWindow(opts)
             tween(tabBtn, {BackgroundTransparency = 0.85}, 0.15)
             if iconImg then tween(iconImg, {ImageColor3 = theme.Text}, 0.15) end
 
-            -- move indicator — center aligned to whatever the tab btn actually has (icon-only / text-only / both)
+            -- move indicator, center aligned to whatever the tab btn actually has (icon-only, text-only, or both)
             local btnH = mobile and 44 or 32
             local step = btnH + 2 -- list padding
             local listTop = 8 -- tabList offset (6) + padTop (2)
@@ -1611,9 +1764,15 @@ function Velvet:CreateWindow(opts)
                 attachOnChanged(toggle, id)
                 setupVisibility(toggle, elem, opts)
                 setupTooltip(elem, opts)
+                tagSearch(elem, opts.Text or id)
 
                 Velvet._elements[id] = toggle
                 table.insert(section.Elements, toggle)
+                -- track for tab badge count
+                tab._toggles = tab._toggles or {}
+                table.insert(tab._toggles, toggle)
+                Velvet:OnFlagChanged(id, function() if tab._refreshBadge then tab:_refreshBadge() end end)
+                if tab._refreshBadge then tab:_refreshBadge() end
                 return toggle
             end
 
@@ -1752,6 +1911,7 @@ function Velvet:CreateWindow(opts)
                 attachOnChanged(slider, id)
                 setupVisibility(slider, elem, opts)
                 setupTooltip(elem, opts)
+                tagSearch(elem, opts.Text or id)
 
                 Velvet._elements[id] = slider
                 table.insert(section.Elements, slider)
@@ -2038,6 +2198,7 @@ function Velvet:CreateWindow(opts)
                 attachOnChanged(dropdown, id)
                 setupVisibility(dropdown, elem, opts)
                 setupTooltip(elem, opts)
+                tagSearch(elem, opts.Text or id)
                 Velvet._elements[id] = dropdown
                 table.insert(section.Elements, dropdown)
                 return dropdown
@@ -2124,6 +2285,7 @@ function Velvet:CreateWindow(opts)
                 attachOnChanged(input, id)
                 setupVisibility(input, elem, opts)
                 setupTooltip(elem, opts)
+                tagSearch(elem, opts.Text or id)
                 Velvet._elements[id] = input
                 table.insert(section.Elements, input)
                 return input
@@ -2229,6 +2391,7 @@ function Velvet:CreateWindow(opts)
                 attachOnChanged(keybind, id)
                 setupVisibility(keybind, elem, opts)
                 setupTooltip(elem, opts)
+                tagSearch(elem, opts.Text or id)
                 Velvet._elements[id] = keybind
                 table.insert(section.Elements, keybind)
                 return keybind
@@ -2500,6 +2663,7 @@ function Velvet:CreateWindow(opts)
                 attachOnChanged(picker, id)
                 setupVisibility(picker, elem, opts)
                 setupTooltip(elem, opts)
+                tagSearch(elem, opts.Text or id)
                 Velvet._elements[id] = picker
                 table.insert(section.Elements, picker)
                 return picker
@@ -2671,6 +2835,7 @@ function Velvet:CreateWindow(opts)
                 attachOnChanged(bar, id)
                 setupVisibility(bar, elem, opts)
                 setupTooltip(elem, opts)
+                tagSearch(elem, opts.Text or id)
                 Velvet._elements[id] = bar
                 table.insert(section.Elements, bar)
                 return bar

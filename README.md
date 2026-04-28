@@ -1,43 +1,32 @@
-# Velvet
+<div align="center">
+  <img src="assets/og.png" alt="Velvet" width="100%"/>
 
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Lua](https://img.shields.io/badge/Lua-5.1-2C2D72.svg?logo=lua)](https://lua.org)
-[![Roblox](https://img.shields.io/badge/Roblox-Exploit_UI-red.svg)](https://github.com/DexCodeSX/Velvet)
-[![Mobile Ready](https://img.shields.io/badge/mobile-ready-brightgreen.svg)]()
-[![Stars](https://img.shields.io/github/stars/DexCodeSX/Velvet?style=social)](https://github.com/DexCodeSX/Velvet)
+  <p>
+    <b>Premium dark glassmorphism UI library for Roblox</b><br/>
+    Single loadstring · PC + Mobile · 5 themes · 1700+ icons
+  </p>
 
-Premium dark glassmorphism UI library for Roblox. PC + Mobile.
+  <p>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-7c5cfc?style=flat-square" alt="MIT"></a>
+    <img src="https://img.shields.io/badge/version-3.1-7c5cfc?style=flat-square" alt="v3.1">
+    <img src="https://img.shields.io/badge/Lua-5.1_Luau-2C2D72?style=flat-square&logo=lua" alt="Luau">
+    <img src="https://img.shields.io/badge/mobile-ready-3ce0c8?style=flat-square" alt="Mobile">
+    <a href="https://github.com/DexCodeSX/Velvet/stargazers"><img src="https://img.shields.io/github/stars/DexCodeSX/Velvet?style=flat-square&color=7c5cfc" alt="Stars"></a>
+  </p>
+</div>
 
-## Features
+---
 
-- Dark glassmorphism aesthetic with smooth animations
-- Toggle, Slider, Button, Dropdown, Input, ColorPicker, Keybind, Label, Divider, Paragraph
-- **ProgressBar, Log/Console, PlayerSelector** (new in 2.0)
-- **Sub-tabs** (pill row inside a tab for grouping)
-- **Conditional visibility** (`VisibleWhen = "flagId"`)
-- **Tooltips** on any element (`Tooltip = "text"`)
-- **OnChanged chaining** (`elem:OnChanged(fn)`)
-- **Watermark/HUD** with live `{fps}`, `{ping}`, `{time}`, `{user}`, `{flag:id}` tokens
-- **Config Import/Export** as base64 strings (share configs in chat)
-- **Auto-update check** against GitHub releases
-- **Sidebar collapse** + **swipe-to-switch-tabs** gestures on mobile
-- **UIScale** for font/element scaling (`Window:SetScale(1.2)`)
-- **Haptic feedback** (`Velvet:Haptic("light")`)
-- Multi-select dropdowns with search
-- HSV color picker with hex input
-- Keybind system (Toggle/Hold/Always modes)
-- Notification system (info, success, warning, error)
-- Floating toggle pill (draggable)
-- Full PC + Mobile touch support
-- Config save/load system
-- 5 built-in themes (Midnight, Ocean, Rose, Emerald, Sunset)
-- Custom theme support
-- Flag system for easy value access
-- Collapsible sections
-- Key system with saved keys
-- Custom toggle pill (text or icon, auto-sizing)
-- `Velvet:Destroy()` full cleanup
-- Single loadstring setup
+## Why Velvet
+
+Other libs feel dated. Velvet is built on the 2026 dark-glassmorphism aesthetic: ambient color orbs, soft inner glows, and microinteractions that land in 200ms. It was designed mobile-first on a tablet and then scaled up to desktop, so touch targets and gestures actually feel right instead of being an afterthought.
+
+- **Live search bar**: type in the header, every element across every tab filters instantly.
+- **Active toggle badges**: each tab in the sidebar shows a pill counting how many toggles are on inside it. Glance at the sidebar, know your state.
+- **Drag mutex**: the color picker grabs input priority on mobile so the slider underneath stops twitching.
+- **Live theme switching**: recolors every existing element when you swap themes. No reload needed.
+- **Tagged error system**: every callback runs through `safecall(source, fn)` and routes failures through `Velvet:OnError(fn)` with the exact source label (`Toggle:aimbot`, `Slider:fov`).
+- **Pulsing logo halo**: small thing, but the window feels alive.
 
 ## Install
 
@@ -45,7 +34,7 @@ Premium dark glassmorphism UI library for Roblox. PC + Mobile.
 local Velvet = loadstring(game:HttpGet("https://raw.githubusercontent.com/DexCodeSX/Velvet/main/Library.lua"))()
 ```
 
-### Addons (optional)
+### Optional addons
 
 ```lua
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/DexCodeSX/Velvet/main/addons/SaveManager.lua"))()
@@ -65,114 +54,175 @@ local Window = Velvet:CreateWindow({
     Title = "My Script",
     SubTitle = "v1.0",
     ToggleKey = Enum.KeyCode.RightShift,
+    ToggleIcon = "sparkles", -- lucide icon name (1700+ available)
 })
 
-local Tab = Window:AddTab("Main")
-local Section = Tab:AddSection("Features")
+local Tab = Window:AddTab("Combat", "sword")
+local Section = Tab:AddSection("Aimbot")
 
-Section:AddToggle("MyToggle", {
-    Text = "Enable Feature",
+Section:AddToggle("Aimbot", {
+    Text = "Enable Aimbot",
     Default = false,
-    Callback = function(value)
-        print("Toggle:", value)
-    end
+    Callback = function(v) _G.aimbot = v end,
 })
 
-Section:AddSlider("Speed", {
-    Text = "Walk Speed",
-    Min = 16,
-    Max = 200,
-    Default = 16,
-    Increment = 1,
-    Callback = function(value)
-        game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = value
-    end
+Section:AddSlider("FOV", {
+    Text = "FOV", Min = 10, Max = 500, Default = 150, Increment = 5,
+    Callback = function(v) _G.fov = v end,
+})
+
+Section:AddDropdown("TargetPart", {
+    Text = "Target Part",
+    Values = { "Head", "HumanoidRootPart", "Torso" },
+    Default = "Head",
+    VisibleWhen = "Aimbot", -- only show while Aimbot toggle is on
 })
 ```
 
-## API Reference
+## Examples
+
+| File | What it shows |
+|------|---------------|
+| [`Example.lua`](Example.lua) | Full feature tour: every element, theme switching, watermark, search, sub-tabs |
+| [`KeySystemTest.lua`](KeySystemTest.lua) | Standalone key gate flow with saved-key + reset |
+
+```lua
+-- run the full feature demo
+loadstring(game:HttpGet("https://raw.githubusercontent.com/DexCodeSX/Velvet/main/Example.lua"))()
+
+-- or test the key system
+loadstring(game:HttpGet("https://raw.githubusercontent.com/DexCodeSX/Velvet/main/KeySystemTest.lua"))()
+```
+
+## Features
+
+### Elements
+Toggle · Slider · Button · Dropdown (single + multi + searchable) · Input · ColorPicker (HSV + hex) · Keybind (Toggle / Hold / Always) · Label · Divider · Paragraph · ProgressBar · Log/Console · PlayerSelector
+
+### Premium UX
+- Live element **search bar** in the window header
+- **Active toggle badges** per tab
+- Drag **mutex** so picker drag never bleeds into slider
+- Sub-tabs (horizontal pill row inside a tab)
+- Conditional visibility via `VisibleWhen = "flagId"`
+- Tooltips on any element via `Tooltip = "text"`
+- `elem:OnChanged(fn)` listener chaining
+- Watermark with live tokens: `{fps}`, `{ping}`, `{time}`, `{user}`, `{flag:id}`
+- Config import/export as base64 strings
+- GitHub release update check
+- Sidebar collapse + swipe-to-switch gestures (mobile)
+- Per-window UIScale
+- Haptic feedback simulation
+
+### Aesthetic
+- Dark glassmorphism with ambient accent glow
+- Pulsing logo halo
+- Quint + Back easing for premium microinteractions (~220ms)
+- Live theme remap (no reload needed)
+- 5 built-in themes: **Midnight** · **Ocean** · **Rose** · **Emerald** · **Sunset**
+- Custom theme support
+
+### Robustness
+- Tagged `safecall` error system → `Velvet:OnError(fn)`
+- Full cleanup via `Velvet:Destroy()`
+- Mobile-tested on Android tablet (Delta Executor)
+
+## API
 
 ### Velvet
 
 | Method | Description |
 |--------|-------------|
 | `Velvet:CreateWindow(opts)` | Create main window |
-| `Velvet:Notify(opts)` | Show notification |
-| `Velvet:SetTheme(table)` | Update theme colors |
-| `Velvet:GetTheme()` | Get current theme |
-| `Velvet.Flags` | Access all element values by ID |
-
-### Window Options
-
-```lua
-{
-    Title = "string",
-    SubTitle = "string",
-    Width = number,
-    Height = number,
-    TabWidth = number,
-    ToggleKey = Enum.KeyCode,
-}
-```
+| `Velvet:Notify(opts)` | Show toast notification |
+| `Velvet:KeySystem(opts)` | Gate access behind a key list |
+| `Velvet:CreateWatermark(opts)` | Floating HUD bar with live tokens |
+| `Velvet:CheckForUpdate(repo)` | Compare current version to GitHub releases |
+| `Velvet:SetTheme(table)` | Live recolor every element |
+| `Velvet:GetTheme()` | Current theme table |
+| `Velvet:OnError(fn)` | Hook into safecall failures |
+| `Velvet:Haptic(strength)` | "light" / "medium" / "strong" |
+| `Velvet:Destroy()` | Full cleanup |
+| `Velvet.Flags[id]` | Read any element value by ID |
 
 ### Window
 
 | Method | Description |
 |--------|-------------|
-| `Window:AddTab(name)` | Add tab to sidebar |
-| `Window:Show()` | Show window |
-| `Window:Hide()` | Hide window (shows floating pill) |
-| `Window:Toggle()` | Toggle visibility |
+| `Window:AddTab(name, icon?)` | Add tab. icon is a lucide name, asset id, or url |
+| `Window:Show()` / `:Hide()` / `:Toggle()` | Visibility |
+| `Window:SetScale(n)` | UIScale 0.5 – 2.0 |
+| `Window:ToggleSidebar()` | Collapse sidebar to icon-only |
+| `Window:_applySearch(q)` | Trigger the header search filter programmatically |
 | `Window:Destroy()` | Remove window |
 
 ### Tab
 
 | Method | Description |
 |--------|-------------|
-| `Tab:AddSection(name)` | Add collapsible section |
+| `Tab:AddSection(name)` | Collapsible section |
+| `Tab:AddSubTab(name)` | Horizontal pill sub-tab inside the tab |
 
 ### Section
 
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `Section:AddToggle(id, opts)` | Toggle | Pill-style toggle switch |
-| `Section:AddSlider(id, opts)` | Slider | Draggable value slider |
-| `Section:AddButton(opts)` | Button | Click button with flash animation |
-| `Section:AddDropdown(id, opts)` | Dropdown | Single/multi select dropdown |
-| `Section:AddInput(id, opts)` | Input | Text input field |
-| `Section:AddColorPicker(id, opts)` | ColorPicker | HSV color picker with hex |
-| `Section:AddKeybind(id, opts)` | Keybind | Key binding (Toggle/Hold/Always) |
-| `Section:AddLabel(text)` | Label | Text label |
-| `Section:AddDivider()` | nil | Horizontal separator |
-| `Section:AddParagraph(opts)` | nil | Title + content text block |
+| Method | Returns | Notes |
+|--------|---------|-------|
+| `:AddToggle(id, opts)` | Toggle | counts toward tab badge |
+| `:AddSlider(id, opts)` | Slider | drag mutex aware |
+| `:AddButton(opts)` | Button | hover stroke + press flash |
+| `:AddDropdown(id, opts)` | Dropdown | Multi + searchable |
+| `:AddInput(id, opts)` | Input | |
+| `:AddColorPicker(id, opts)` | ColorPicker | HSV canvas + hex box, picker-priority drag |
+| `:AddKeybind(id, opts)` | Keybind | Toggle / Hold / Always |
+| `:AddLabel(opts)` | Label | |
+| `:AddDivider()` | nil | |
+| `:AddParagraph(opts)` | nil | |
+| `:AddProgressBar(id, opts)` | Bar | `bar:Set(n)`, `bar:SetMax(n)`, `bar:SetColor(c)` |
+| `:AddLog(opts)` | Log | `log:Info/Warn/Error/Success(msg)`, `log:Clear()` |
+| `:AddPlayerSelector(id, opts)` | PS | auto-refreshes on Player added/removed |
 
-### Element Options
+### Element option flags (any element)
 
-**Toggle:** `{ Text, Default, Callback }`
-**Slider:** `{ Text, Min, Max, Default, Increment, Suffix, Callback }`
-**Button:** `{ Text, Callback }`
-**Dropdown:** `{ Text, Values, Default, Multi, Callback }`
-**Input:** `{ Text, Default, Placeholder, Callback }`
-**ColorPicker:** `{ Text, Default, Callback }`
-**Keybind:** `{ Text, Default, Mode, Callback }` (Mode: "Toggle", "Hold", "Always")
-**Paragraph:** `{ Title, Content }`
+| Key | Effect |
+|-----|--------|
+| `Tooltip = "text"` | Hover/long-press tooltip |
+| `VisibleWhen = "flagId"` | Hide until that flag is truthy |
+| `Default = ...` | Initial value |
+| `Callback = fn` | Run on value change (wrapped in safecall) |
 
-### Element Methods
-
-All elements with IDs have:
-- `:Set(value)` - update value programmatically
-- `:Get()` - get current value
-
-Values accessible via `Velvet.Flags["elementId"]`.
+Every element with an `id` exposes `:Set(v)`, `:Get()`, `:OnChanged(fn)`, and is reachable through `Velvet.Flags[id]`.
 
 ### Notifications
 
 ```lua
 Velvet:Notify({
-    Title = "Title",
-    Content = "Message body",
+    Title = "Velvet",
+    Content = "loaded",
     Duration = 4,
-    Type = "success", -- info, success, warning, error
+    Type = "success", -- info | success | warning | error
+})
+```
+
+### Key system
+
+```lua
+Velvet:KeySystem({
+    Title = "Velvet",
+    SubTitle = "premium access required",
+    Keys = { "velvet-2026", "let-me-in" },
+    SaveKey = "VelvetKey.txt", -- optional, remembers passing key
+    Note = "key auto saves",
+    DiscordInvite = "https://discord.gg/velvet",
+    Callback = function(success) end,
+})
+```
+
+### Watermark
+
+```lua
+Velvet:CreateWatermark({
+    Text = "Velvet | {fps} fps | {ping} ms | {user}",
+    Position = "TopLeft", -- TopLeft / TopRight / BottomLeft / BottomRight
 })
 ```
 
@@ -183,7 +233,9 @@ SaveManager:Bind(Velvet, "FolderName")
 SaveManager:Save("configName")
 SaveManager:Load("configName")
 SaveManager:Delete("configName")
-SaveManager:GetConfigs() -- returns { "config1", "config2" }
+SaveManager:GetConfigs()
+SaveManager:Export() -- returns base64 string
+SaveManager:Import(str)
 ```
 
 ### ThemeManager
@@ -193,98 +245,44 @@ ThemeManager:Bind(Velvet)
 ThemeManager:SetTheme("Ocean")
 ThemeManager:GetThemes() -- { "Midnight", "Ocean", "Rose", "Emerald", "Sunset" }
 ThemeManager:AddTheme("Custom", { Base = ..., Accent = ..., ... })
-ThemeManager:LoadSaved() -- loads last used theme
+ThemeManager:LoadSaved()
 ```
 
-### Built-in Themes
-
-- **Midnight** (default) - violet accent, deep black
-- **Ocean** - blue accent, navy tones
-- **Rose** - pink accent, warm dark
-- **Emerald** - green accent, forest dark
-- **Sunset** - orange accent, warm brown
-
-### Key System
+## Window options
 
 ```lua
-Velvet:KeySystem({
-    Title = "My Script",
-    SubTitle = "Key Required",
-    Keys = {"key123", "beta-access"},
-    SaveKey = true,
-    GetKeyLink = "https://link-to-key.com",
-    Callback = function()
-        -- runs after valid key entered
-        -- create your window here
-    end
-})
+{
+    Title = "string",
+    SubTitle = "string",
+    Width = number,                    -- default: 560 PC / fits screen on mobile
+    Height = number,                   -- default: 400 PC / fits screen on mobile
+    TabWidth = number,                 -- sidebar width
+    ToggleKey = Enum.KeyCode,          -- key that toggles visibility
+    ToggleText = "string",             -- short text on the floating pill
+    ToggleIcon = "lucide-name | rbxassetid://... | url",
+    Scale = number,                    -- UIScale multiplier
+    SidebarToggle = boolean,           -- show the = button (default true)
+    Gestures = boolean,                -- mobile swipe-to-switch (default true)
+}
 ```
 
-### Window Toggle Pill
+## Themes
 
-```lua
--- custom text on floating pill (auto-sizes to fit)
-local Window = Velvet:CreateWindow({
-    Title = "My Script",
-    ToggleText = "MS", -- short text, auto-sizes
-})
+| Theme | Accent | Mood |
+|-------|--------|------|
+| **Midnight** | violet `#7c5cfc` | default, deep black |
+| **Ocean** | blue `#328cff` | navy, cool |
+| **Rose** | pink `#f0509e` | warm dark |
+| **Emerald** | green `#32d278` | forest |
+| **Sunset** | orange `#ff8232` | warm brown |
 
--- or use an icon instead
-local Window = Velvet:CreateWindow({
-    Title = "My Script",
-    ToggleIcon = "rbxassetid://123456", -- icon image
-})
-```
+## Roadmap
 
-### New in 2.0
-
-```lua
--- progress bar
-local bar = section:AddProgressBar("XP", { Text="XP", Default=0, Max=100, Color=Color3.fromRGB(120,200,255) })
-bar:Set(42)
-
--- log / console
-local log = section:AddLog({ Height=120, MaxLines=50 })
-log:Info("hi") log:Warn("oops") log:Error("x") log:Success("done")
-
--- player selector (auto-refreshes on join/leave, supports @me/@random/@nearest)
-local ps = section:AddPlayerSelector("Target", { ExcludeSelf=true })
-for _, p in ps:GetPlayers() do print(p.Name) end
-
--- sub-tabs inside a tab
-local sub = Tab:AddSubTab("Combat")
-local s = sub:AddSection("Aimbot")
-
--- conditional visibility - hide until a flag is truthy
-section:AddSlider("Adv", { Text="Advanced", Min=0, Max=100, Default=50, VisibleWhen="ShowAdvanced" })
-
--- tooltips
-section:AddToggle("X", { Text="Toggle", Tooltip="Hover help text", Default=false })
-
--- OnChanged listener
-local t = section:AddToggle("Y", { Text="Y" })
-t:OnChanged(function(v) print("changed:", v) end)
-
--- watermark
-Velvet:CreateWatermark({ Text="Velvet | {fps} fps | {ping} ms | {user}" })
-
--- share config as base64
-local str = SaveManager:Export()
-SaveManager:Import(str)
-
--- update check
-local info = Velvet:CheckForUpdate("DexCodeSX/Velvet")
--- info.latest, info.current, info.outdated
-
--- UI scale, sidebar toggle, haptic
-Window:SetScale(1.2)
-Window:ToggleSidebar()
-Velvet:Haptic("medium")
-
--- clean destroy
-Velvet:Destroy()
-```
+- [ ] Drag-to-reorder sections
+- [ ] Command palette (Ctrl+K)
+- [ ] Per-element animation customization API
+- [ ] More lucide icons synced to upstream
 
 ## License
 
-MIT
+MIT, see [LICENSE](LICENSE).

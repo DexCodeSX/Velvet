@@ -23,7 +23,7 @@ ThemeManager:Bind(Velvet)
 ----------------------------------------------------------------
 local Window = Velvet:CreateWindow({
     Title = "Velvet",
-    SubTitle = "v3.0 showcase",
+    SubTitle = "v3.1 showcase",
     ToggleKey = Enum.KeyCode.RightShift,
     ToggleIcon = "sparkles",
 })
@@ -154,7 +154,7 @@ local bar = newSection:AddProgressBar("XPBar", {
 })
 
 local log = newSection:AddLog({ Height = 120, MaxLines = 40 })
-log:Success("Velvet 3.0 loaded")
+log:Success("Velvet 3.1 loaded")
 log:Info("listening for events")
 log:Warn("this is a warning")
 log:Error("this is an error")
@@ -315,10 +315,13 @@ Velvet:CreateWatermark({
 
 Velvet:Notify({
     Title = "Velvet",
-    Content = "v3.0 loaded - " .. #Icons:All() .. " icons available",
+    Content = "v3.1 loaded - " .. #Icons:All() .. " icons available",
     Duration = 4,
     Type = "success"
 })
+
+-- v3.1 hint: try the header search box, type 'fov' or 'esp' to live filter,
+-- and watch the tab badges count active toggles per tab as you flip them on
 
 --[[
     KEY SYSTEM (optional, wrap everything above in a function):
