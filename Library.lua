@@ -793,7 +793,7 @@ function Velvet:CreateWindow(opts)
         Size = UDim2.new(0, searchBarW, 0, 26),
         Position = UDim2.new(1, -(110 + searchBarW + 6), 0.5, -13),
         BackgroundColor3 = theme.Surface,
-        BackgroundTransparency = 0.4,
+        BackgroundTransparency = mobile and 0.4 or 0.1,
         BorderSizePixel = 0,
         ZIndex = 7,
         Parent = header,
@@ -871,7 +871,7 @@ function Velvet:CreateWindow(opts)
             searchBox.Text = ""
             searchBox.Visible = false
             closeBtn.Visible = false
-            tween(searchBar, {Size = UDim2.new(0, 28, 0, 26), Position = UDim2.new(1, -(110 + 28 + 6), 0.5, -13)}, 0.2)
+            tween(searchBar, {Size = UDim2.new(0, 28, 0, 26), Position = UDim2.new(1, -(110 + 28 + 6), 0.5, -13), BackgroundTransparency = 0.4}, 0.2)
             if window._applySearch then window:_applySearch("") end
         end
 
@@ -883,7 +883,7 @@ function Velvet:CreateWindow(opts)
             searchBox.Size = UDim2.new(1, -52, 1, 0)
             -- place expanded bar near the right edge but stop short of the action buttons
             -- header buttons take ~110px; pad 6px gap. Use full width so search has room.
-            tween(searchBar, {Size = UDim2.new(1, -130, 0, 26), Position = UDim2.new(0, 12, 0.5, -13)}, 0.2)
+            tween(searchBar, {Size = UDim2.new(1, -130, 0, 26), Position = UDim2.new(0, 12, 0.5, -13), BackgroundTransparency = 0}, 0.2)
             closeBtn.Visible = true
             task.delay(0.22, function()
                 if mobileExpanded then searchBox:CaptureFocus() end
@@ -1402,8 +1402,9 @@ function Velvet:CreateWindow(opts)
 
         -- active toggle badge, top-right corner of tab btn
         local badge = create("Frame", {
+            AnchorPoint = Vector2.new(1, 0),
             Size = UDim2.new(0, 14, 0, 14),
-            Position = UDim2.new(1, -(mobile and 6 or 8), 0, mobile and 4 or 4),
+            Position = UDim2.new(1, -(mobile and 4 or 6), 0, mobile and 3 or 4),
             BackgroundColor3 = theme.Accent,
             BorderSizePixel = 0,
             Visible = false,
