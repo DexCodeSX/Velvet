@@ -838,8 +838,11 @@ function Velvet:CreateWindow(opts)
         tween(searchStroke, {Color = theme.Border, Transparency = 0.5}, 0.15)
     end)
 
-    -- mobile: tap icon to expand into a wide bar that overlays the buttons
+    -- mobile: tap icon to expand. expanded bar sits ABOVE the buttons row
+    -- (full width minus padding) so it doesnt clip the close/min/toggle.
+    -- a small × at the right of the expanded bar lets users collapse it.
     local mobileExpanded = false
+    local closeBtn
     if mobile then
         local tapBtn = create("TextButton", {
             Size = UDim2.fromScale(1, 1),
@@ -848,17 +851,51 @@ function Velvet:CreateWindow(opts)
             ZIndex = 9,
             Parent = searchBar,
         })
+
+        -- × glyph that appears only when expanded, used to collapse
+        closeBtn = create("TextButton", {
+            Size = UDim2.new(0, 22, 1, 0),
+            Position = UDim2.new(1, -22, 0, 0),
+            BackgroundTransparency = 1,
+            Text = "×",
+            TextColor3 = theme.TextMuted,
+            TextSize = 18,
+            Font = Enum.Font.GothamBold,
+            ZIndex = 10,
+            Visible = false,
+            Parent = searchBar,
+        })
+
+        local function collapse()
+            mobileExpanded = false
+            searchBox.Text = ""
+            searchBox.Visible = false
+            closeBtn.Visible = false
+            tween(searchBar, {Size = UDim2.new(0, 28, 0, 26), Position = UDim2.new(1, -(110 + 28 + 6), 0.5, -13)}, 0.2)
+            if window._applySearch then window:_applySearch("") end
+        end
+
         tapBtn.MouseButton1Click:Connect(function()
-            mobileExpanded = not mobileExpanded
-            if mobileExpanded then
-                searchBox.Visible = true
-                tween(searchBar, {Size = UDim2.new(0, 200, 0, 26), Position = UDim2.new(1, -210, 0.5, -13)}, 0.2)
-                task.delay(0.2, function() searchBox:CaptureFocus() end)
-            else
-                searchBox.Text = ""
-                searchBox.Visible = false
-                tween(searchBar, {Size = UDim2.new(0, 28, 0, 26), Position = UDim2.new(1, -(110 + 28 + 6), 0.5, -13)}, 0.2)
-                if window._applySearch then window:_applySearch("") end
+            if mobileExpanded then return end
+            mobileExpanded = true
+            searchBox.Visible = true
+            -- shrink box width to leave room for × button
+            searchBox.Size = UDim2.new(1, -52, 1, 0)
+            -- place expanded bar near the right edge but stop short of the action buttons
+            -- header buttons take ~110px; pad 6px gap. Use full width so search has room.
+            tween(searchBar, {Size = UDim2.new(1, -130, 0, 26), Position = UDim2.new(0, 12, 0.5, -13)}, 0.2)
+            closeBtn.Visible = true
+            task.delay(0.22, function()
+                if mobileExpanded then searchBox:CaptureFocus() end
+            end)
+        end)
+
+        closeBtn.MouseButton1Click:Connect(collapse)
+        -- also collapse if user taps elsewhere & box loses focus with no text
+        searchBox.FocusLost:Connect(function()
+            if mobileExpanded and searchBox.Text == "" then
+                task.wait(0.1)
+                if mobileExpanded and searchBox.Text == "" then collapse() end
             end
         end)
     end
@@ -1393,8 +1430,24 @@ function Velvet:CreateWindow(opts)
             end
             if n > 0 then
                 badge.Visible = true
-                badgeLbl.Text = tostring(n)
-                tween(badge, {Size = UDim2.new(0, 14, 0, 14)}, 0.18, Enum.EasingStyle.Back)
+                -- compact: 1234 -> 1.2k, 12345 -> 12k, 1234567 -> 1.2m
+                local txt
+                if n < 1000 then
+                    txt = tostring(n)
+                elseif n < 10000 then
+                    txt = string.format("%.1fk", n/1000):gsub("%.0k$", "k")
+                elseif n < 1000000 then
+                    txt = string.format("%dk", math.floor(n/1000))
+                elseif n < 10000000 then
+                    txt = string.format("%.1fm", n/1000000):gsub("%.0m$", "m")
+                else
+                    txt = string.format("%dm", math.floor(n/1000000))
+                end
+                badgeLbl.Text = txt
+                -- grow width with text length so it morphs from circle to pill
+                local len = #txt
+                local w = (len <= 1) and 14 or (10 + len * 5)
+                tween(badge, {Size = UDim2.new(0, w, 0, 14)}, 0.18, Enum.EasingStyle.Back)
             else
                 badge.Visible = false
             end
@@ -2673,10 +2726,12 @@ function Velvet:CreateWindow(opts)
             -- LABEL
             -- ===
             function section:AddLabel(text)
+                -- accept table form too: AddLabel({ Text = "..." })
+                if type(text) == "table" then text = text.Text or text.Title or "" end
                 local lbl = create("TextLabel", {
                     Size = UDim2.new(1, 0, 0, 18),
                     BackgroundTransparency = 1,
-                    Text = text or "",
+                    Text = tostring(text or ""),
                     TextColor3 = theme.TextDim,
                     TextSize = 11,
                     Font = Enum.Font.Gotham,
