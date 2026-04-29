@@ -10,6 +10,8 @@ local Velvet = loadstring(game:HttpGet(repo .. "Library.lua"))()
 local SaveManager = loadstring(game:HttpGet(repo .. "addons/SaveManager.lua"))()
 local ThemeManager = loadstring(game:HttpGet(repo .. "addons/ThemeManager.lua"))()
 local Icons = loadstring(game:HttpGet(repo .. "addons/Icons.lua"))()
+local QuickBar = loadstring(game:HttpGet(repo .. "addons/QuickBar.lua"))()
+local NotifHistory = loadstring(game:HttpGet(repo .. "addons/NotificationHistory.lua"))()
 
 ----------------------------------------------------------------
 -- SETUP
@@ -23,10 +25,16 @@ ThemeManager:Bind(Velvet)
 ----------------------------------------------------------------
 local Window = Velvet:CreateWindow({
     Title = "Velvet",
-    SubTitle = "v3.1 showcase",
+    SubTitle = "v3.2 showcase",
     ToggleKey = Enum.KeyCode.RightShift,
     ToggleIcon = "sparkles",
 })
+
+----------------------------------------------------------------
+-- ADDONS BIND
+----------------------------------------------------------------
+QuickBar:Bind(Velvet, Window, { MaxPins = 5 })
+NotifHistory:Bind(Velvet, Window)
 
 ----------------------------------------------------------------
 -- COMBAT TAB
@@ -256,6 +264,10 @@ shareSection:AddButton({
     end
 })
 
+-- profiles
+local profileSection = Settings:AddSection("Profiles")
+SaveManager:BuildProfileUI(profileSection)
+
 -- mobile / ui
 local uiSection = Settings:AddSection("UI")
 uiSection:AddSlider("UIScale", {
@@ -313,15 +325,23 @@ Velvet:CreateWatermark({
     Text = "Velvet | {fps} fps | {ping} ms | {user}",
 })
 
+-- pin some toggles to quick bar for demo
+QuickBar:Pin("AimbotEnabled")
+QuickBar:Pin("ESPEnabled")
+
 Velvet:Notify({
     Title = "Velvet",
-    Content = "v3.1 loaded - " .. #Icons:All() .. " icons available",
+    Content = "v3.2 loaded - " .. #Icons:All() .. " icons available",
     Duration = 4,
     Type = "success"
 })
 
--- v3.1 hint: try the header search box, type 'fov' or 'esp' to live filter,
--- and watch the tab badges count active toggles per tab as you flip them on
+-- v3.2 hints:
+-- try the header search box, type 'fov' or 'esp' to live filter
+-- watch tab badges count active toggles per tab
+-- click the bell icon to see notification history
+-- hide window (RightShift) to see the quick toggle bar with pinned toggles
+-- go to Settings > Profiles to save/load named config presets
 
 --[[
     KEY SYSTEM (optional, wrap everything above in a function):

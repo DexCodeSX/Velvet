@@ -301,6 +301,7 @@ function Velvet:Notify(opts)
     local content = opts.Content or ""
     local dur = opts.Duration or 4
     local ntype = opts.Type or "info"
+    if self._notifHook then pcall(self._notifHook, opts) end
     local theme = self.Theme
 
     local accentColor = ({
@@ -790,6 +791,7 @@ function Velvet:CreateWindow(opts)
     -- search bar (header right, before the 3 buttons; collapses to icon on mobile)
     local searchBarW = mobile and 28 or 160
     local searchBar = create("Frame", {
+        Name = "VelvetSearchBar",
         Size = UDim2.new(0, searchBarW, 0, 26),
         Position = UDim2.new(1, -(110 + searchBarW + 6), 0.5, -13),
         BackgroundColor3 = theme.Surface,
@@ -1198,6 +1200,8 @@ function Velvet:CreateWindow(opts)
     togglePill.MouseLeave:Connect(function()
         tween(togglePill, {BackgroundTransparency = 0.15}, 0.15)
     end)
+
+    window._togglePill = togglePill
 
     -- show/hide
     function window:Show()
