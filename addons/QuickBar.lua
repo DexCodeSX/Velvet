@@ -1,18 +1,24 @@
 --[[
     Velvet QuickBar
-    Floating draggable toggle strip - pin your most-used toggles.
-    Visible when window is hidden. One-tap toggle without opening the full UI.
+    Floating draggable dock with pinned toggles + buttons.
+    Visible when window is hidden. One tap fires the toggle/button.
 
-    Usage:
-        local QuickBar = loadstring(game:HttpGet(repo .. "addons/QuickBar.lua"))()
-        QuickBar:Bind(Velvet, Window, { MaxPins = 5 })
-        QuickBar:Pin("AimbotEnabled")
+    Each pin is a tile (iOS Control Center style):
+        - toggle: icon glows accent when ON, dims when OFF
+        - button: solid accent tile, fires callback on tap
+        - the open-window tile is always first
+
+    API:
+        QuickBar:Bind(Velvet, Window, { MaxPins = 5, Position = UDim2.new(...) })
+        QuickBar:Pin("AimbotEnabled", { Icon = "crosshair" })
+        QuickBar:PinButton("Reset", { Icon = "rotate-ccw", Callback = fn })
         QuickBar:Unpin("AimbotEnabled")
 ]]
 
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local HttpService = game:GetService("HttpService")
+local RunService = game:GetService("RunService")
 
 local QuickBar = {
     Library = nil,
@@ -24,14 +30,16 @@ local QuickBar = {
     _maxPins = 5,
     _file = "VelvetQuickBar.json",
     _conns = {},
-    _visible = false,
+    _tip = nil,
 }
 
 -- ── helpers ──────────────────────────────────────────────
 
-local function tw(obj, props, dur)
-    local ti = TweenInfo.new(dur or 0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-    TweenService:Create(obj, ti, props):Play()
+local function tw(obj, props, dur, style)
+    local ti = TweenInfo.new(dur or 0.18, style or Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+    local t = TweenService:Create(obj, ti, props)
+    t:Play()
+    return t
 end
 
 local function isMobile()
@@ -60,15 +68,25 @@ local function conn(signal, fn)
     return c
 end
 
--- ── persistence ──────────────────────────────────────────
--- pin entries: { type = "toggle", id = "..." } or { type = "button", label = "..." }
+local function lucide(name, fallback)
+    local lib = QuickBar.Library
+    if lib and lib._icons and lib._icons[name] then
+        return lib._icons[name]
+    end
+    return fallback or ""
+end
+
+-- ── persistence ────────────���─────────────────────────────
+-- pin entries: { type = "toggle", id = "...", icon = "..." } or { type = "button", label = "...", icon = "..." }
 -- buttons are NOT persisted (callbacks aren't serializable), only toggles save
 
 local function savePins()
     pcall(function()
         local saveable = {}
         for _, p in QuickBar._pins do
-            if p.type == "toggle" then table.insert(saveable, p.id) end
+            if p.type == "toggle" then
+                table.insert(saveable, { id = p.id, icon = p.icon })
+            end
         end
         writefile(QuickBar._file, HttpService:JSONEncode(saveable))
     end)
@@ -81,9 +99,11 @@ local function loadPins()
             local data = HttpService:JSONDecode(raw)
             if type(data) == "table" then
                 local out = {}
-                for _, id in data do
-                    if type(id) == "string" then
-                        table.insert(out, { type = "toggle", id = id })
+                for _, e in data do
+                    if type(e) == "string" then
+                        table.insert(out, { type = "toggle", id = e })
+                    elseif type(e) == "table" and e.id then
+                        table.insert(out, { type = "toggle", id = e.id, icon = e.icon })
                     end
                 end
                 QuickBar._pins = out
@@ -92,54 +112,135 @@ local function loadPins()
     end)
 end
 
--- ── cell builder ─────────────────────────────────────────
+-- ── tooltip (floating label below the bar) ────────────────
 
-local function buildCell(bar, pin, idx, theme, mobile)
-    local cellW = mobile and 56 or 58
+local function ensureTooltip()
+    if QuickBar._tip then return QuickBar._tip end
+    local tip = Instance.new("Frame")
+    tip.Name = "Tip"
+    tip.AutomaticSize = Enum.AutomaticSize.X
+    tip.Size = UDim2.new(0, 0, 0, 22)
+    tip.BackgroundColor3 = Color3.fromRGB(10, 10, 14)
+    tip.BackgroundTransparency = 0.05
+    tip.BorderSizePixel = 0
+    tip.Visible = false
+    tip.ZIndex = 110
+    tip.Parent = QuickBar._gui
+    corner(tip, 6)
+    stroke(tip, QuickBar.Library.Theme.Border, 1, 0.4)
+
+    local lbl = Instance.new("TextLabel")
+    lbl.Name = "Label"
+    lbl.AutomaticSize = Enum.AutomaticSize.X
+    lbl.Size = UDim2.new(0, 0, 1, 0)
+    lbl.BackgroundTransparency = 1
+    lbl.TextColor3 = QuickBar.Library.Theme.Text
+    lbl.TextSize = 11
+    lbl.Font = Enum.Font.GothamMedium
+    lbl.ZIndex = 111
+    lbl.Parent = tip
+
+    local pad = Instance.new("UIPadding")
+    pad.PaddingLeft = UDim.new(0, 8)
+    pad.PaddingRight = UDim.new(0, 8)
+    pad.Parent = lbl
+
+    QuickBar._tip = tip
+    QuickBar._tipLbl = lbl
+    return tip
+end
+
+local function showTip(cell, text)
+    local tip = ensureTooltip()
+    QuickBar._tipLbl.Text = text
+    tip.Visible = true
+    -- position below the cell, centered
+    task.defer(function()
+        if not tip.Parent then return end
+        local cx = cell.AbsolutePosition.X + cell.AbsoluteSize.X/2
+        local cy = cell.AbsolutePosition.Y + cell.AbsoluteSize.Y + 8
+        tip.Position = UDim2.new(0, cx - tip.AbsoluteSize.X/2, 0, cy)
+        tip.BackgroundTransparency = 1
+        tw(tip, { BackgroundTransparency = 0.05 }, 0.12)
+    end)
+end
+
+local function hideTip()
+    if QuickBar._tip then QuickBar._tip.Visible = false end
+end
+
+-- ── tile builder ─────────────────────────────────────────
+
+local function buildTile(bar, pin, idx, theme, mobile)
+    local tileS = mobile and 40 or 36
     local lib = QuickBar.Library
 
-    local cell = Instance.new("Frame")
-    cell.Name = "Cell_" .. (pin.id or pin.label or tostring(idx))
-    cell.Size = UDim2.new(0, cellW, 1, 0)
-    cell.BackgroundTransparency = 1
-    cell.ZIndex = 101
+    local cell = Instance.new("TextButton")
+    cell.Name = "Tile_" .. (pin.id or pin.label or tostring(idx))
+    cell.Size = UDim2.new(0, tileS, 0, tileS)
+    cell.AutoButtonColor = false
+    cell.Text = ""
+    cell.BackgroundColor3 = theme.Surface
+    cell.BackgroundTransparency = 0.25
+    cell.BorderSizePixel = 0
+    cell.ZIndex = 102
     cell.LayoutOrder = idx
     cell.Parent = bar
+    corner(cell, 10)
+    local tileStroke = stroke(cell, theme.Border, 1, 0.55)
 
-    -- visual indicator (dot for toggle, square for button)
-    local indSize = mobile and 12 or 10
-    local ind = Instance.new("Frame")
-    ind.Size = UDim2.new(0, indSize, 0, indSize)
-    ind.Position = UDim2.new(0.5, -indSize/2, 0, mobile and 4 or 4)
-    ind.ZIndex = 102
-    ind.BorderSizePixel = 0
-    ind.Parent = cell
-    if pin.type == "button" then
-        corner(ind, 2)
-        ind.BackgroundColor3 = theme.Accent
-    else
-        corner(ind, indSize/2)
+    -- icon (uses pin.icon, falls back to a sensible default)
+    local iconName = pin.icon
+    if not iconName then
+        if pin.type == "toggle" then iconName = "zap" else iconName = "play" end
     end
+    local iconAsset = lucide(iconName, "rbxassetid://104262388679305")
 
-    -- label
-    local labelText = pin.type == "button" and (pin.label or "Btn") or pin.id
-    local lbl = Instance.new("TextLabel")
-    lbl.Size = UDim2.new(1, -4, 0, 14)
-    lbl.Position = UDim2.new(0, 2, 1, mobile and -16 or -15)
-    lbl.BackgroundTransparency = 1
-    lbl.Text = string.sub(labelText, 1, 7)
-    lbl.TextSize = mobile and 10 or 9
-    lbl.Font = Enum.Font.GothamMedium
-    lbl.TextColor3 = theme.TextDim
-    lbl.TextTruncate = Enum.TextTruncate.AtEnd
-    lbl.ZIndex = 102
-    lbl.Parent = cell
+    local img = Instance.new("ImageLabel")
+    local iconS = mobile and 18 or 16
+    img.Size = UDim2.new(0, iconS, 0, iconS)
+    img.Position = UDim2.new(0.5, -iconS/2, 0.5, -iconS/2)
+    img.BackgroundTransparency = 1
+    img.Image = iconAsset
+    img.ImageColor3 = theme.TextDim
+    img.ZIndex = 103
+    img.Parent = cell
+
+    -- tiny status dot bottom-right (only for toggles)
+    local dot
+    if pin.type == "toggle" then
+        dot = Instance.new("Frame")
+        local ds = mobile and 7 or 6
+        dot.Size = UDim2.new(0, ds, 0, ds)
+        dot.Position = UDim2.new(1, -ds-3, 1, -ds-3)
+        dot.AnchorPoint = Vector2.new(0, 0)
+        dot.BackgroundColor3 = theme.TextMuted
+        dot.BorderSizePixel = 0
+        dot.ZIndex = 104
+        dot.Parent = cell
+        corner(dot, ds/2)
+    end
 
     local function refresh()
         if pin.type == "toggle" then
             local val = lib.Flags[pin.id]
-            ind.BackgroundColor3 = val and theme.Accent or theme.TextMuted
-            lbl.TextColor3 = val and theme.Text or theme.TextDim
+            if val then
+                tw(cell, { BackgroundColor3 = theme.Accent, BackgroundTransparency = 0.05 }, 0.18)
+                tw(tileStroke, { Color = theme.Accent, Transparency = 0 }, 0.18)
+                tw(img, { ImageColor3 = Color3.new(1, 1, 1) }, 0.18)
+                tw(dot, { BackgroundColor3 = Color3.new(1, 1, 1) }, 0.18)
+            else
+                tw(cell, { BackgroundColor3 = theme.Surface, BackgroundTransparency = 0.25 }, 0.18)
+                tw(tileStroke, { Color = theme.Border, Transparency = 0.55 }, 0.18)
+                tw(img, { ImageColor3 = theme.TextDim }, 0.18)
+                tw(dot, { BackgroundColor3 = theme.TextMuted }, 0.18)
+            end
+        elseif pin.type == "button" then
+            cell.BackgroundColor3 = theme.Accent
+            cell.BackgroundTransparency = 0.1
+            tileStroke.Color = theme.Accent
+            tileStroke.Transparency = 0.2
+            img.ImageColor3 = Color3.new(1, 1, 1)
         end
     end
     refresh()
@@ -148,7 +249,26 @@ local function buildCell(bar, pin, idx, theme, mobile)
         lib:OnFlagChanged(pin.id, refresh)
     end
 
-    return { frame = cell, ind = ind, label = lbl, pin = pin, refresh = refresh }
+    -- hover/tap feedback
+    local hovered = false
+    cell.MouseEnter:Connect(function()
+        hovered = true
+        if pin.type == "toggle" and not lib.Flags[pin.id] then
+            tw(cell, { BackgroundTransparency = 0.1 }, 0.12)
+            tw(tileStroke, { Color = theme.Accent, Transparency = 0.3 }, 0.12)
+        end
+        showTip(cell, pin.type == "toggle" and pin.id or (pin.label or "Button"))
+    end)
+    cell.MouseLeave:Connect(function()
+        hovered = false
+        if pin.type == "toggle" and not lib.Flags[pin.id] then
+            tw(cell, { BackgroundTransparency = 0.25 }, 0.12)
+            tw(tileStroke, { Color = theme.Border, Transparency = 0.55 }, 0.12)
+        end
+        hideTip()
+    end)
+
+    return { frame = cell, img = img, dot = dot, pin = pin, refresh = refresh }
 end
 
 -- ── bar layout ───────────────────────────────────────────
@@ -162,104 +282,120 @@ local function rebuildBar()
     local mobile = isMobile()
     local bar = QuickBar._bar
 
-    -- clear old cells
+    -- clear old tiles (but keep open btn marker)
     for _, c in QuickBar._cells do
         if c.frame then c.frame:Destroy() end
     end
     table.clear(QuickBar._cells)
+    if QuickBar._openCell and QuickBar._openCell.frame then
+        QuickBar._openCell.frame:Destroy()
+    end
+    QuickBar._openCell = nil
 
     if #QuickBar._pins == 0 then
         bar.Visible = false
-        -- show original pill if window hidden
         if not win.Visible and win._togglePill then
             win._togglePill.Visible = true
         end
         return
     end
 
-    local cellW = mobile and 56 or 58
-    local openW = mobile and 38 or 34
-    local barH = mobile and 44 or 38
-    local barW = openW + #QuickBar._pins * cellW + 8
+    local tileS = mobile and 40 or 36
+    local pad = 6
+    local gap = 6
+    local count = #QuickBar._pins + 1 -- +1 open btn
+    local barW = pad*2 + count*tileS + (count-1)*gap
+    local barH = tileS + pad*2
 
     bar.Size = UDim2.new(0, barW, 0, barH)
     bar.BackgroundColor3 = theme.Base
-    corner(bar, 10)
+    bar.BackgroundTransparency = 0.05
 
-    -- open-window button (first cell, accent filled square with maximize icon)
-    local openCell = Instance.new("Frame")
-    openCell.Name = "OpenBtn"
-    openCell.Size = UDim2.new(0, openW, 1, 0)
-    openCell.BackgroundTransparency = 1
-    openCell.ZIndex = 101
+    -- open-window tile (always first)
+    local openCell = Instance.new("TextButton")
+    openCell.Name = "OpenTile"
+    openCell.Size = UDim2.new(0, tileS, 0, tileS)
+    openCell.AutoButtonColor = false
+    openCell.Text = ""
+    openCell.BackgroundColor3 = theme.Accent
+    openCell.BackgroundTransparency = 0.1
+    openCell.BorderSizePixel = 0
+    openCell.ZIndex = 102
     openCell.LayoutOrder = 0
     openCell.Parent = bar
+    corner(openCell, 10)
+    local openStroke = stroke(openCell, theme.Accent, 1, 0.2)
 
-    -- accent rounded square so it visually reads as a button, not a toggle dot
-    local btnH = mobile and 24 or 22
-    local btnW = mobile and 24 or 22
-    local openBtn = Instance.new("Frame")
-    openBtn.Size = UDim2.new(0, btnW, 0, btnH)
-    openBtn.Position = UDim2.new(0.5, -btnW/2, 0.5, -btnH/2)
-    openBtn.BackgroundColor3 = theme.Accent
-    openBtn.BorderSizePixel = 0
-    openBtn.ZIndex = 102
-    openBtn.Parent = openCell
-    corner(openBtn, 5)
+    local openIcon = Instance.new("ImageLabel")
+    local oS = mobile and 18 or 16
+    openIcon.Size = UDim2.new(0, oS, 0, oS)
+    openIcon.Position = UDim2.new(0.5, -oS/2, 0.5, -oS/2)
+    openIcon.BackgroundTransparency = 1
+    openIcon.Image = lucide("layout-grid", lucide("maximize", "rbxassetid://104262388679305"))
+    openIcon.ImageColor3 = Color3.new(1, 1, 1)
+    openIcon.ZIndex = 103
+    openIcon.Parent = openCell
 
-    -- maximize / window icon inside the button
-    local icon = Instance.new("ImageLabel")
-    local iconS = mobile and 12 or 11
-    icon.Size = UDim2.new(0, iconS, 0, iconS)
-    icon.Position = UDim2.new(0.5, -iconS/2, 0.5, -iconS/2)
-    icon.BackgroundTransparency = 1
-    icon.Image = "rbxassetid://104262388679305" -- generic frame fallback
-    -- prefer lib's icon pack if available
-    if QuickBar.Library and QuickBar.Library._icons then
-        icon.Image = QuickBar.Library._icons["maximize"]
-            or QuickBar.Library._icons["square"]
-            or QuickBar.Library._icons["app-window"]
-            or icon.Image
-    end
-    icon.ImageColor3 = Color3.new(1, 1, 1)
-    icon.ZIndex = 103
-    icon.Parent = openBtn
+    openCell.MouseEnter:Connect(function()
+        tw(openCell, { BackgroundTransparency = 0 }, 0.12)
+        showTip(openCell, "Open Velvet")
+    end)
+    openCell.MouseLeave:Connect(function()
+        tw(openCell, { BackgroundTransparency = 0.1 }, 0.12)
+        hideTip()
+    end)
+    openCell.MouseButton1Click:Connect(function()
+        if QuickBar._dragMoved then return end
+        local w = QuickBar.Window
+        if w then w:Show() end
+    end)
 
-    -- separator line between open btn and toggle cells
-    local sep = Instance.new("Frame")
-    sep.Size = UDim2.new(0, 1, 0.55, 0)
-    sep.Position = UDim2.new(1, 0, 0.225, 0)
-    sep.BackgroundColor3 = theme.Border
-    sep.BackgroundTransparency = 0.4
-    sep.BorderSizePixel = 0
-    sep.ZIndex = 102
-    sep.Parent = openCell
-
-    QuickBar._openCellW = openW
+    QuickBar._openCell = { frame = openCell, img = openIcon }
 
     for i, pin in QuickBar._pins do
-        local c = buildCell(bar, pin, i, theme, mobile)
+        local c = buildTile(bar, pin, i, theme, mobile)
         table.insert(QuickBar._cells, c)
+
+        c.frame.MouseButton1Click:Connect(function()
+            if QuickBar._dragMoved then return end
+            local libRef = QuickBar.Library
+            if c.pin.type == "toggle" then
+                local elem = libRef._elements and libRef._elements[c.pin.id]
+                if elem and elem.Set and elem.Get then
+                    elem:Set(not elem:Get())
+                    -- haptic-ish bounce
+                    tw(c.frame, { Size = UDim2.new(0, tileS - 4, 0, tileS - 4) }, 0.06)
+                    task.delay(0.06, function()
+                        tw(c.frame, { Size = UDim2.new(0, tileS, 0, tileS) }, 0.12, Enum.EasingStyle.Back)
+                    end)
+                end
+            elseif c.pin.type == "button" and c.pin.cb then
+                pcall(c.pin.cb)
+                tw(c.frame, { BackgroundTransparency = 0 }, 0.06)
+                task.delay(0.06, function()
+                    tw(c.frame, { BackgroundTransparency = 0.1 }, 0.18)
+                end)
+            end
+        end)
     end
 
-    -- show bar only when window is hidden
     if not win.Visible then
         bar.Visible = true
         if win._togglePill then win._togglePill.Visible = false end
     end
 end
 
--- ── drag + tap handling ──────────────────────────────────
+-- ── drag handling on the BAR (not on tiles) ─────────────
 
 local function setupDrag(bar)
     local dragging, dragStart, startPos = false, nil, nil
     local moved = false
-    local mobile = isMobile()
 
     conn(bar.InputBegan, function(inp)
         if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then
             dragging = true
             moved = false
+            QuickBar._dragMoved = false
             dragStart = Vector2.new(inp.Position.X, inp.Position.Y)
             startPos = bar.Position
         end
@@ -270,7 +406,10 @@ local function setupDrag(bar)
         if inp.UserInputType == Enum.UserInputType.MouseMovement or inp.UserInputType == Enum.UserInputType.Touch then
             local pos = Vector2.new(inp.Position.X, inp.Position.Y)
             local delta = pos - dragStart
-            if delta.Magnitude > 5 then moved = true end
+            if delta.Magnitude > 6 then
+                moved = true
+                QuickBar._dragMoved = true
+            end
             bar.Position = UDim2.new(
                 startPos.X.Scale, startPos.X.Offset + delta.X,
                 startPos.Y.Scale, startPos.Y.Offset + delta.Y
@@ -282,40 +421,12 @@ local function setupDrag(bar)
         if inp.UserInputType ~= Enum.UserInputType.MouseButton1 and inp.UserInputType ~= Enum.UserInputType.Touch then return end
         if not dragging then return end
         dragging = false
-
-        if not moved then
-            local tapX = inp.Position.X
-            local barAbsX = bar.AbsolutePosition.X
-            local cellW = mobile and 56 or 58
-            local openW = QuickBar._openCellW or (mobile and 38 or 34)
-            local relX = tapX - barAbsX - 4 -- 4px left padding
-
-            if relX < openW then
-                -- tapped the open button, show window
-                local win = QuickBar.Window
-                if win then win:Show() end
-            else
-                -- tapped a pin cell
-                local toggleX = relX - openW
-                local idx = math.floor(toggleX / cellW) + 1
-                local pin = QuickBar._pins[idx]
-                if pin then
-                    local lib = QuickBar.Library
-                    if pin.type == "toggle" then
-                        local elem = lib._elements and lib._elements[pin.id]
-                        if elem and elem.Set and elem.Get then
-                            elem:Set(not elem:Get())
-                        end
-                    elseif pin.type == "button" and pin.cb then
-                        pcall(pin.cb)
-                    end
-                end
-            end
-        end
+        -- give children a tick to read the flag, then clear
+        task.delay(0.05, function() QuickBar._dragMoved = false end)
     end)
 end
 
--- ── public api ───────────────────────────────────────���───
+-- ── public api ───────────────────────────────────────────
 
 function QuickBar:Bind(library, window, opts)
     opts = opts or {}
@@ -342,35 +453,48 @@ function QuickBar:Bind(library, window, opts)
     self._gui = gui
 
     local mobile = isMobile()
-    local barH = mobile and 40 or 34
+    local barH = mobile and 52 or 48
 
-    -- bar frame
-    local bar = Instance.new("TextButton")
+    -- bar frame (pure container, drag goes via background)
+    local bar = Instance.new("Frame")
     bar.Name = "QuickBar"
+    bar.Active = true
     bar.Size = UDim2.new(0, 100, 0, barH)
     bar.Position = opts.Position or UDim2.new(0, 12, 0.5, -barH/2)
     bar.BackgroundColor3 = library.Theme.Base
-    bar.BackgroundTransparency = 0.08
-    bar.Text = ""
+    bar.BackgroundTransparency = 0.05
     bar.BorderSizePixel = 0
-    bar.AutoButtonColor = false
     bar.ZIndex = 100
     bar.Visible = false
     bar.Parent = gui
-    corner(bar, 10)
-    stroke(bar, library.Theme.Accent, 1, 0.4)
+    corner(bar, 14)
+    stroke(bar, library.Theme.Border, 1, 0.4)
+
+    -- glassmorphism inner highlight
+    local glass = Instance.new("Frame")
+    glass.Size = UDim2.new(1, -2, 0, 1)
+    glass.Position = UDim2.new(0, 1, 0, 1)
+    glass.BackgroundColor3 = Color3.new(1, 1, 1)
+    glass.BackgroundTransparency = 0.85
+    glass.BorderSizePixel = 0
+    glass.ZIndex = 101
+    glass.Parent = bar
+
     self._bar = bar
 
-    -- layout for cells
+    -- horizontal layout
     local layout = Instance.new("UIListLayout")
     layout.FillDirection = Enum.FillDirection.Horizontal
     layout.SortOrder = Enum.SortOrder.LayoutOrder
-    layout.Padding = UDim.new(0, 0)
+    layout.VerticalAlignment = Enum.VerticalAlignment.Center
+    layout.Padding = UDim.new(0, 6)
     layout.Parent = bar
 
     local pad = Instance.new("UIPadding")
-    pad.PaddingLeft = UDim.new(0, 4)
-    pad.PaddingRight = UDim.new(0, 4)
+    pad.PaddingLeft = UDim.new(0, 6)
+    pad.PaddingRight = UDim.new(0, 6)
+    pad.PaddingTop = UDim.new(0, 6)
+    pad.PaddingBottom = UDim.new(0, 6)
     pad.Parent = bar
 
     setupDrag(bar)
@@ -391,6 +515,9 @@ function QuickBar:Bind(library, window, opts)
             if #QuickBar._pins > 0 then
                 bar.Visible = true
                 if self._togglePill then self._togglePill.Visible = false end
+                -- slide-in animation
+                bar.BackgroundTransparency = 1
+                tw(bar, { BackgroundTransparency = 0.05 }, 0.22)
             else
                 if self._togglePill then self._togglePill.Visible = true end
             end
@@ -420,21 +547,31 @@ local function checkMax()
     return true
 end
 
-function QuickBar:Pin(id)
+function QuickBar:Pin(id, opts)
     if not self.Library then return end
     if findPinIdx(id) then return end
     if not checkMax() then return end
     if typeof(self.Library.Flags[id]) ~= "boolean" then return end
-    table.insert(self._pins, { type = "toggle", id = id })
+    opts = opts or {}
+    table.insert(self._pins, { type = "toggle", id = id, icon = opts.Icon })
     savePins()
     rebuildBar()
 end
 
-function QuickBar:PinButton(label, callback)
-    if not self.Library or not callback then return end
+function QuickBar:PinButton(label, opts)
+    if not self.Library then return end
     if findPinIdx(label) then return end
     if not checkMax() then return end
-    table.insert(self._pins, { type = "button", label = label, cb = callback })
+    -- accept either (label, callback) or (label, { Callback = ..., Icon = ... })
+    local cb, icon
+    if type(opts) == "function" then
+        cb = opts
+    elseif type(opts) == "table" then
+        cb = opts.Callback
+        icon = opts.Icon
+    end
+    if not cb then return end
+    table.insert(self._pins, { type = "button", label = label, cb = cb, icon = icon })
     rebuildBar()
 end
 
@@ -462,6 +599,7 @@ function QuickBar:Destroy()
     if self._gui then self._gui:Destroy() end
     self._gui = nil
     self._bar = nil
+    self._tip = nil
     table.clear(self._cells)
     table.clear(self._pins)
 end
