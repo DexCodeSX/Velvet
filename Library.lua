@@ -1439,8 +1439,13 @@ function Velvet:CreateWindow(opts)
         }, 0.2)
         task.delay(0.22, function()
             main.Visible = false
-            togglePill.Visible = true
-            tween(togglePill, {BackgroundTransparency = 0.15}, 0.2)
+            -- skip the pill if an addon (e.g. QuickBar) suppresses it
+            if not self._pillSuppressed then
+                togglePill.Visible = true
+                tween(togglePill, {BackgroundTransparency = 0.15}, 0.2)
+            else
+                togglePill.Visible = false
+            end
         end)
     end
 

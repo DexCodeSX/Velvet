@@ -504,22 +504,27 @@ function QuickBar:Bind(library, window, opts)
     local origHide = window.Hide
 
     function window:Show(...)
+        self._pillSuppressed = (#QuickBar._pins > 0)
         if self._togglePill then self._togglePill.Visible = false end
         bar.Visible = false
         return origShow(self, ...)
     end
 
     function window:Hide(...)
+        -- suppress origHide's pill-reveal when we have pins
+        self._pillSuppressed = (#QuickBar._pins > 0)
         local result = origHide(self, ...)
         task.delay(0.25, function()
             if #QuickBar._pins > 0 then
                 bar.Visible = true
                 if self._togglePill then self._togglePill.Visible = false end
-                -- slide-in animation
                 bar.BackgroundTransparency = 1
                 tw(bar, { BackgroundTransparency = 0.05 }, 0.22)
             else
-                if self._togglePill then self._togglePill.Visible = true end
+                self._pillSuppressed = false
+                if self._togglePill then
+                    self._togglePill.Visible = true
+                end
             end
         end)
         return result
