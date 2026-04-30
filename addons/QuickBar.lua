@@ -155,12 +155,44 @@ local function rebuildBar()
     end
 
     local cellW = mobile and 52 or 56
+    local openW = mobile and 36 or 30
     local barH = mobile and 40 or 34
-    local barW = #QuickBar._pins * cellW + 8
+    local barW = openW + #QuickBar._pins * cellW + 8
 
     bar.Size = UDim2.new(0, barW, 0, barH)
     bar.BackgroundColor3 = theme.Base
     corner(bar, 10)
+
+    -- open-window button (first cell, accent colored dot with arrow icon)
+    local openCell = Instance.new("Frame")
+    openCell.Name = "OpenBtn"
+    openCell.Size = UDim2.new(0, openW, 1, 0)
+    openCell.BackgroundTransparency = 1
+    openCell.ZIndex = 101
+    openCell.LayoutOrder = 0
+    openCell.Parent = bar
+
+    local openDot = Instance.new("Frame")
+    local ds = mobile and 16 or 14
+    openDot.Size = UDim2.new(0, ds, 0, ds)
+    openDot.Position = UDim2.new(0.5, -ds/2, 0.5, -ds/2)
+    openDot.BackgroundColor3 = theme.Accent
+    openDot.BorderSizePixel = 0
+    openDot.ZIndex = 102
+    openDot.Parent = openCell
+    corner(openDot, ds/2)
+
+    -- separator line between open btn and toggle cells
+    local sep = Instance.new("Frame")
+    sep.Size = UDim2.new(0, 1, 0.6, 0)
+    sep.Position = UDim2.new(1, 0, 0.2, 0)
+    sep.BackgroundColor3 = theme.Border
+    sep.BackgroundTransparency = 0.4
+    sep.BorderSizePixel = 0
+    sep.ZIndex = 102
+    sep.Parent = openCell
+
+    QuickBar._openCellW = openW
 
     for i, id in QuickBar._pins do
         local c = buildCell(bar, id, i, theme, mobile)
@@ -209,19 +241,27 @@ local function setupDrag(bar)
         dragging = false
 
         if not moved then
-            -- tap: figure out which cell was tapped
             local tapX = inp.Position.X
             local barAbsX = bar.AbsolutePosition.X
             local cellW = mobile and 52 or 56
+            local openW = QuickBar._openCellW or (mobile and 36 or 30)
             local relX = tapX - barAbsX - 4 -- 4px left padding
-            local idx = math.floor(relX / cellW) + 1
 
-            if idx >= 1 and idx <= #QuickBar._pins then
-                local id = QuickBar._pins[idx]
-                local lib = QuickBar.Library
-                local elem = lib._elements and lib._elements[id]
-                if elem and elem.Set and elem.Get then
-                    elem:Set(not elem:Get())
+            if relX < openW then
+                -- tapped the open button, show window
+                local win = QuickBar.Window
+                if win then win:Show() end
+            else
+                -- tapped a toggle cell
+                local toggleX = relX - openW
+                local idx = math.floor(toggleX / cellW) + 1
+                if idx >= 1 and idx <= #QuickBar._pins then
+                    local id = QuickBar._pins[idx]
+                    local lib = QuickBar.Library
+                    local elem = lib._elements and lib._elements[id]
+                    if elem and elem.Set and elem.Get then
+                        elem:Set(not elem:Get())
+                    end
                 end
             end
         end
