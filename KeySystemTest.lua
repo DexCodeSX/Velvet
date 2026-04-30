@@ -7,16 +7,16 @@ local ok = Velvet:KeySystem({
     Title = "Velvet",
     SubTitle = "premium access required",
     Keys = { "velvet-2026", "let-me-in", "test-key" },
-    SaveKey = "VelvetKeyTest.txt", -- saves the key so we dont prompt every run
-    Note = "key auto saves, type it once and youre good",
-    DiscordInvite = "https://discord.gg/velvet",
+    SaveKey = "VelvetKeyTest.txt",
+    MaxAttempts = 5,
+    GetKeyLink = "https://discord.gg/velvet",
+    GetKeyText = "Get Key from Discord",
     Callback = function(success)
-        if not success then
-            warn("[velvet] key denied, bailing")
-            return
-        end
-        print("[velvet] key passed, loading UI...")
-    end
+        if success then print("[velvet] key passed, loading UI...") end
+    end,
+    OnLockout = function()
+        warn("[velvet] too many wrong tries, locked out")
+    end,
 })
 
 if not ok then return end

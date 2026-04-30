@@ -95,7 +95,7 @@ end
 -- ── cell builder ─────────────────────────────────────────
 
 local function buildCell(bar, pin, idx, theme, mobile)
-    local cellW = mobile and 52 or 56
+    local cellW = mobile and 56 or 58
     local lib = QuickBar.Library
 
     local cell = Instance.new("Frame")
@@ -107,15 +107,15 @@ local function buildCell(bar, pin, idx, theme, mobile)
     cell.Parent = bar
 
     -- visual indicator (dot for toggle, square for button)
-    local indSize = mobile and 14 or 12
+    local indSize = mobile and 12 or 10
     local ind = Instance.new("Frame")
     ind.Size = UDim2.new(0, indSize, 0, indSize)
-    ind.Position = UDim2.new(0.5, -indSize/2, 0, mobile and 5 or 4)
+    ind.Position = UDim2.new(0.5, -indSize/2, 0, mobile and 4 or 4)
     ind.ZIndex = 102
     ind.BorderSizePixel = 0
     ind.Parent = cell
     if pin.type == "button" then
-        corner(ind, 3)
+        corner(ind, 2)
         ind.BackgroundColor3 = theme.Accent
     else
         corner(ind, indSize/2)
@@ -124,13 +124,13 @@ local function buildCell(bar, pin, idx, theme, mobile)
     -- label
     local labelText = pin.type == "button" and (pin.label or "Btn") or pin.id
     local lbl = Instance.new("TextLabel")
-    lbl.Size = UDim2.new(1, -4, 0, 10)
-    lbl.Position = UDim2.new(0, 2, 1, mobile and -13 or -12)
+    lbl.Size = UDim2.new(1, -4, 0, 14)
+    lbl.Position = UDim2.new(0, 2, 1, mobile and -16 or -15)
     lbl.BackgroundTransparency = 1
-    lbl.Text = string.sub(labelText, 1, 6)
-    lbl.TextSize = mobile and 8 or 7
-    lbl.Font = Enum.Font.Gotham
-    lbl.TextColor3 = theme.TextMuted
+    lbl.Text = string.sub(labelText, 1, 7)
+    lbl.TextSize = mobile and 10 or 9
+    lbl.Font = Enum.Font.GothamMedium
+    lbl.TextColor3 = theme.TextDim
     lbl.TextTruncate = Enum.TextTruncate.AtEnd
     lbl.ZIndex = 102
     lbl.Parent = cell
@@ -139,6 +139,7 @@ local function buildCell(bar, pin, idx, theme, mobile)
         if pin.type == "toggle" then
             local val = lib.Flags[pin.id]
             ind.BackgroundColor3 = val and theme.Accent or theme.TextMuted
+            lbl.TextColor3 = val and theme.Text or theme.TextDim
         end
     end
     refresh()
@@ -176,16 +177,16 @@ local function rebuildBar()
         return
     end
 
-    local cellW = mobile and 52 or 56
-    local openW = mobile and 36 or 30
-    local barH = mobile and 40 or 34
+    local cellW = mobile and 56 or 58
+    local openW = mobile and 38 or 34
+    local barH = mobile and 44 or 38
     local barW = openW + #QuickBar._pins * cellW + 8
 
     bar.Size = UDim2.new(0, barW, 0, barH)
     bar.BackgroundColor3 = theme.Base
     corner(bar, 10)
 
-    -- open-window button (first cell, accent colored dot with arrow icon)
+    -- open-window button (first cell, accent filled square with maximize icon)
     local openCell = Instance.new("Frame")
     openCell.Name = "OpenBtn"
     openCell.Size = UDim2.new(0, openW, 1, 0)
@@ -194,20 +195,40 @@ local function rebuildBar()
     openCell.LayoutOrder = 0
     openCell.Parent = bar
 
-    local openDot = Instance.new("Frame")
-    local ds = mobile and 16 or 14
-    openDot.Size = UDim2.new(0, ds, 0, ds)
-    openDot.Position = UDim2.new(0.5, -ds/2, 0.5, -ds/2)
-    openDot.BackgroundColor3 = theme.Accent
-    openDot.BorderSizePixel = 0
-    openDot.ZIndex = 102
-    openDot.Parent = openCell
-    corner(openDot, ds/2)
+    -- accent rounded square so it visually reads as a button, not a toggle dot
+    local btnH = mobile and 24 or 22
+    local btnW = mobile and 24 or 22
+    local openBtn = Instance.new("Frame")
+    openBtn.Size = UDim2.new(0, btnW, 0, btnH)
+    openBtn.Position = UDim2.new(0.5, -btnW/2, 0.5, -btnH/2)
+    openBtn.BackgroundColor3 = theme.Accent
+    openBtn.BorderSizePixel = 0
+    openBtn.ZIndex = 102
+    openBtn.Parent = openCell
+    corner(openBtn, 5)
+
+    -- maximize / window icon inside the button
+    local icon = Instance.new("ImageLabel")
+    local iconS = mobile and 12 or 11
+    icon.Size = UDim2.new(0, iconS, 0, iconS)
+    icon.Position = UDim2.new(0.5, -iconS/2, 0.5, -iconS/2)
+    icon.BackgroundTransparency = 1
+    icon.Image = "rbxassetid://104262388679305" -- generic frame fallback
+    -- prefer lib's icon pack if available
+    if QuickBar.Library and QuickBar.Library._icons then
+        icon.Image = QuickBar.Library._icons["maximize"]
+            or QuickBar.Library._icons["square"]
+            or QuickBar.Library._icons["app-window"]
+            or icon.Image
+    end
+    icon.ImageColor3 = Color3.new(1, 1, 1)
+    icon.ZIndex = 103
+    icon.Parent = openBtn
 
     -- separator line between open btn and toggle cells
     local sep = Instance.new("Frame")
-    sep.Size = UDim2.new(0, 1, 0.6, 0)
-    sep.Position = UDim2.new(1, 0, 0.2, 0)
+    sep.Size = UDim2.new(0, 1, 0.55, 0)
+    sep.Position = UDim2.new(1, 0, 0.225, 0)
     sep.BackgroundColor3 = theme.Border
     sep.BackgroundTransparency = 0.4
     sep.BorderSizePixel = 0
@@ -265,8 +286,8 @@ local function setupDrag(bar)
         if not moved then
             local tapX = inp.Position.X
             local barAbsX = bar.AbsolutePosition.X
-            local cellW = mobile and 52 or 56
-            local openW = QuickBar._openCellW or (mobile and 36 or 30)
+            local cellW = mobile and 56 or 58
+            local openW = QuickBar._openCellW or (mobile and 38 or 34)
             local relX = tapX - barAbsX - 4 -- 4px left padding
 
             if relX < openW then

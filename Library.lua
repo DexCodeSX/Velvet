@@ -691,30 +691,82 @@ function Velvet:KeySystem(opts)
         tween(submitBtn, {BackgroundColor3 = theme.Accent}, 0.15)
     end)
 
-    -- get key link
+    -- get key link (styled, secondary button below verify)
     if opts.GetKeyLink then
         local linkBtn = create("TextButton", {
-            Size = UDim2.new(1, -40, 0, 28),
-            Position = UDim2.new(0, 20, 0, 174),
-            BackgroundTransparency = 1,
-            Text = "Get Key",
-            TextColor3 = theme.Accent,
-            TextSize = 12,
-            Font = Enum.Font.GothamMedium,
+            Size = UDim2.new(1, -40, 0, mobile and 36 or 32),
+            Position = UDim2.new(0, 20, 0, 176),
+            BackgroundColor3 = theme.Surface,
+            BackgroundTransparency = 0.2,
+            Text = "",
+            BorderSizePixel = 0,
+            AutoButtonColor = false,
             ZIndex = 210,
             Parent = card
         })
+        addCorner(linkBtn, 8)
+        local linkStroke = addStroke(linkBtn, theme.Border, 1, 0.5)
+
+        -- icon + text together
+        local row = create("Frame", {
+            Size = UDim2.fromScale(1, 1),
+            BackgroundTransparency = 1,
+            ZIndex = 211,
+            Parent = linkBtn
+        })
+        create("UIListLayout", {
+            FillDirection = Enum.FillDirection.Horizontal,
+            HorizontalAlignment = Enum.HorizontalAlignment.Center,
+            VerticalAlignment = Enum.VerticalAlignment.Center,
+            Padding = UDim.new(0, 6),
+            Parent = row
+        })
+
+        local iconImg = (Velvet._icons and Velvet._icons["external-link"]) or "rbxassetid://104262388679305"
+        create("ImageLabel", {
+            Size = UDim2.new(0, 14, 0, 14),
+            BackgroundTransparency = 1,
+            Image = iconImg,
+            ImageColor3 = theme.Accent,
+            ZIndex = 212,
+            LayoutOrder = 1,
+            Parent = row
+        })
+        local linkLbl = create("TextLabel", {
+            AutomaticSize = Enum.AutomaticSize.X,
+            Size = UDim2.new(0, 0, 1, 0),
+            BackgroundTransparency = 1,
+            Text = opts.GetKeyText or "Get Key",
+            TextColor3 = theme.Text,
+            TextSize = 12,
+            Font = Enum.Font.GothamMedium,
+            ZIndex = 212,
+            LayoutOrder = 2,
+            Parent = row
+        })
+
+        linkBtn.MouseEnter:Connect(function()
+            tween(linkBtn, {BackgroundTransparency = 0.05}, 0.15)
+            tween(linkStroke, {Color = theme.Accent, Transparency = 0.2}, 0.15)
+        end)
+        linkBtn.MouseLeave:Connect(function()
+            tween(linkBtn, {BackgroundTransparency = 0.2}, 0.15)
+            tween(linkStroke, {Color = theme.Border, Transparency = 0.5}, 0.15)
+        end)
         linkBtn.MouseButton1Click:Connect(function()
             pcall(function() setclipboard(opts.GetKeyLink) end)
-            statusLabel.Text = "Link copied to clipboard!"
-            statusLabel.TextColor3 = theme.Info
-            task.delay(2, function()
-                if statusLabel.Parent then statusLabel.Text = "" end
+            linkLbl.Text = "Link copied!"
+            linkLbl.TextColor3 = theme.Success
+            task.delay(1.5, function()
+                if linkLbl.Parent then
+                    linkLbl.Text = opts.GetKeyText or "Get Key"
+                    linkLbl.TextColor3 = theme.Text
+                end
             end)
         end)
     end
 
-    local cardH = opts.GetKeyLink and 214 or 180
+    local cardH = opts.GetKeyLink and (mobile and 226 or 222) or 180
 
     -- animate in
     tween(card, {
@@ -779,7 +831,9 @@ function Velvet:KeySystem(opts)
         if enter then tryKey() end
     end)
 
-    -- block until done (or return immediately if caller doesn't need to wait)
+    -- yield current thread until user passes or hits lockout
+    -- (so caller can do `if not Velvet:KeySystem(...) then return end` synchronously)
+    while not passed and not locked do task.wait() end
     return passed
 end
 
@@ -1617,7 +1671,9 @@ function Velvet:CreateWindow(opts)
         function tab:_refreshBadge()
             local n = 0
             for _, tg in self._toggles or {} do
-                if tg.Get and tg:Get() then n = n + 1 end
+                -- only count toggles whose row is currently visible (skip VisibleWhen=false)
+                local visible = (not tg._frame) or tg._frame.Visible
+                if visible and tg.Get and tg:Get() then n = n + 1 end
             end
             if n > 0 then
                 badge.Visible = true
@@ -2002,7 +2058,7 @@ function Velvet:CreateWindow(opts)
 
                 update(value, true)
 
-                local toggle = { Value = value }
+                local toggle = { Value = value, _frame = elem }
                 function toggle:Set(v) update(v) end
                 function toggle:Get() return value end
                 attachOnChanged(toggle, id)
@@ -2015,6 +2071,12 @@ function Velvet:CreateWindow(opts)
                 -- track for tab badge count
                 tab._toggles = tab._toggles or {}
                 table.insert(tab._toggles, toggle)
+                -- if this toggle has VisibleWhen, refresh badge when its visibility flips
+                if opts.VisibleWhen then
+                    Velvet:OnFlagChanged(opts.VisibleWhen, function()
+                        if tab._refreshBadge then tab:_refreshBadge() end
+                    end)
+                end
                 Velvet:OnFlagChanged(id, function() if tab._refreshBadge then tab:_refreshBadge() end end)
                 if tab._refreshBadge then tab:_refreshBadge() end
                 return toggle
