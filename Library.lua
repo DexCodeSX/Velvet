@@ -22,7 +22,7 @@ local Velvet = {
     _errorLog = {},
     _onError = nil,
     _activeDrag = nil, -- mutex so picker drag doesn't bleed into slider
-    _version = "3.1.0"
+    _version = "3.2.0"
 }
 
 -- defaults
@@ -44,6 +44,130 @@ local DEFAULT_THEME = {
 }
 
 Velvet.Theme = DEFAULT_THEME
+
+-- preset themes (devs love these)
+Velvet.Themes = {
+    Midnight = DEFAULT_THEME,
+
+    Catppuccin = {
+        Name = "Catppuccin",
+        Base = Color3.fromRGB(24, 24, 37),
+        Surface = Color3.fromRGB(30, 30, 46),
+        Panel = Color3.fromRGB(49, 50, 68),
+        Border = Color3.fromRGB(69, 71, 90),
+        Accent = Color3.fromRGB(203, 166, 247),
+        AccentDark = Color3.fromRGB(166, 132, 213),
+        Text = Color3.fromRGB(205, 214, 244),
+        TextDim = Color3.fromRGB(166, 173, 200),
+        TextMuted = Color3.fromRGB(108, 112, 134),
+        Success = Color3.fromRGB(166, 227, 161),
+        Warning = Color3.fromRGB(249, 226, 175),
+        Error = Color3.fromRGB(243, 139, 168),
+        Info = Color3.fromRGB(137, 180, 250),
+    },
+
+    TokyoNight = {
+        Name = "Tokyo Night",
+        Base = Color3.fromRGB(26, 27, 38),
+        Surface = Color3.fromRGB(36, 40, 59),
+        Panel = Color3.fromRGB(41, 46, 66),
+        Border = Color3.fromRGB(65, 72, 104),
+        Accent = Color3.fromRGB(125, 207, 255),
+        AccentDark = Color3.fromRGB(86, 154, 200),
+        Text = Color3.fromRGB(192, 202, 245),
+        TextDim = Color3.fromRGB(154, 165, 206),
+        TextMuted = Color3.fromRGB(86, 95, 137),
+        Success = Color3.fromRGB(158, 206, 106),
+        Warning = Color3.fromRGB(224, 175, 104),
+        Error = Color3.fromRGB(247, 118, 142),
+        Info = Color3.fromRGB(122, 162, 247),
+    },
+
+    Dracula = {
+        Name = "Dracula",
+        Base = Color3.fromRGB(40, 42, 54),
+        Surface = Color3.fromRGB(52, 54, 70),
+        Panel = Color3.fromRGB(68, 71, 90),
+        Border = Color3.fromRGB(98, 114, 164),
+        Accent = Color3.fromRGB(189, 147, 249),
+        AccentDark = Color3.fromRGB(150, 110, 210),
+        Text = Color3.fromRGB(248, 248, 242),
+        TextDim = Color3.fromRGB(180, 180, 190),
+        TextMuted = Color3.fromRGB(98, 114, 164),
+        Success = Color3.fromRGB(80, 250, 123),
+        Warning = Color3.fromRGB(241, 250, 140),
+        Error = Color3.fromRGB(255, 85, 85),
+        Info = Color3.fromRGB(139, 233, 253),
+    },
+
+    Nord = {
+        Name = "Nord",
+        Base = Color3.fromRGB(46, 52, 64),
+        Surface = Color3.fromRGB(59, 66, 82),
+        Panel = Color3.fromRGB(67, 76, 94),
+        Border = Color3.fromRGB(76, 86, 106),
+        Accent = Color3.fromRGB(136, 192, 208),
+        AccentDark = Color3.fromRGB(94, 129, 172),
+        Text = Color3.fromRGB(236, 239, 244),
+        TextDim = Color3.fromRGB(216, 222, 233),
+        TextMuted = Color3.fromRGB(129, 161, 193),
+        Success = Color3.fromRGB(163, 190, 140),
+        Warning = Color3.fromRGB(235, 203, 139),
+        Error = Color3.fromRGB(191, 97, 106),
+        Info = Color3.fromRGB(129, 161, 193),
+    },
+
+    Rose = {
+        Name = "Rose Pine",
+        Base = Color3.fromRGB(25, 23, 36),
+        Surface = Color3.fromRGB(38, 35, 58),
+        Panel = Color3.fromRGB(49, 46, 77),
+        Border = Color3.fromRGB(64, 61, 82),
+        Accent = Color3.fromRGB(235, 188, 186),
+        AccentDark = Color3.fromRGB(196, 167, 231),
+        Text = Color3.fromRGB(224, 222, 244),
+        TextDim = Color3.fromRGB(144, 140, 170),
+        TextMuted = Color3.fromRGB(110, 106, 134),
+        Success = Color3.fromRGB(156, 207, 216),
+        Warning = Color3.fromRGB(246, 193, 119),
+        Error = Color3.fromRGB(235, 111, 146),
+        Info = Color3.fromRGB(196, 167, 231),
+    },
+
+    Cyberpunk = {
+        Name = "Cyberpunk",
+        Base = Color3.fromRGB(13, 13, 20),
+        Surface = Color3.fromRGB(20, 20, 35),
+        Panel = Color3.fromRGB(28, 28, 48),
+        Border = Color3.fromRGB(255, 0, 128),
+        Accent = Color3.fromRGB(0, 255, 200),
+        AccentDark = Color3.fromRGB(0, 180, 150),
+        Text = Color3.fromRGB(240, 240, 255),
+        TextDim = Color3.fromRGB(180, 180, 220),
+        TextMuted = Color3.fromRGB(120, 100, 180),
+        Success = Color3.fromRGB(0, 255, 150),
+        Warning = Color3.fromRGB(255, 200, 0),
+        Error = Color3.fromRGB(255, 50, 100),
+        Info = Color3.fromRGB(100, 200, 255),
+    },
+
+    Monochrome = {
+        Name = "Monochrome",
+        Base = Color3.fromRGB(15, 15, 15),
+        Surface = Color3.fromRGB(22, 22, 22),
+        Panel = Color3.fromRGB(32, 32, 32),
+        Border = Color3.fromRGB(60, 60, 60),
+        Accent = Color3.fromRGB(230, 230, 230),
+        AccentDark = Color3.fromRGB(180, 180, 180),
+        Text = Color3.fromRGB(245, 245, 245),
+        TextDim = Color3.fromRGB(170, 170, 170),
+        TextMuted = Color3.fromRGB(110, 110, 110),
+        Success = Color3.fromRGB(200, 200, 200),
+        Warning = Color3.fromRGB(220, 220, 220),
+        Error = Color3.fromRGB(255, 100, 100),
+        Info = Color3.fromRGB(180, 180, 180),
+    },
+}
 
 -- utils
 local function tween(obj, props, dur, style)
@@ -384,24 +508,50 @@ function Velvet:KeySystem(opts)
     local title = opts.Title or "Key System"
     local subtitle = opts.SubTitle or "Enter your key to continue"
     local keys = opts.Keys or {}
+    local hashedKeys = opts.HashedKeys -- optional: pre-hashed sha256 keys (recommended)
     local saveName = opts.SaveKey or "VelvetKey.txt"
     local cb = opts.Callback or function() end
+    local maxAttempts = opts.MaxAttempts or 5
     local theme = self.Theme
     local mobile = isMobile()
 
-    -- check saved key first
-    local savedKey = nil
-    pcall(function()
-        savedKey = readfile(saveName)
-    end)
-    if savedKey then
-        for _, k in keys do
-            if savedKey == k then
-                safecall("KeySystem", cb, true)
-                return true
-            end
-        end
+    -- hash helper (SHA-256 with HWID salt for binding)
+    local function hwidSalt()
+        local h
+        pcall(function() h = (gethwid and gethwid()) or "" end)
+        return tostring(h or "")
     end
+
+    local function hashKey(k)
+        if not crypt or not crypt.hash then return k end
+        local ok, out = pcall(crypt.hash, k .. "::velvet::" .. hwidSalt(), "sha256")
+        return ok and out or k
+    end
+
+    -- valid hash list
+    local validHashes = {}
+    if hashedKeys then
+        for _, h in hashedKeys do validHashes[h] = true end
+    else
+        for _, k in keys do validHashes[hashKey(k)] = true end
+    end
+
+    local function checkKey(input)
+        return validHashes[hashKey(input)] == true
+    end
+
+    -- check saved key first (file stores HWID-bound hash, not raw key)
+    local savedHash = nil
+    pcall(function()
+        if isfile and isfile(saveName) then savedHash = readfile(saveName) end
+    end)
+    if savedHash and validHashes[savedHash] then
+        safecall("KeySystem", cb, true)
+        return true
+    end
+
+    -- attempt counter (in-memory, persists for session)
+    local attempts = 0
 
     local passed = false
     local keyGui = create("Frame", {
@@ -573,7 +723,9 @@ function Velvet:KeySystem(opts)
     }, 0.3)
 
     -- verify
+    local locked = false
     local function tryKey()
+        if locked then return end
         local input = keyInput.Text
         if input == "" then
             statusLabel.Text = "Enter a key first"
@@ -581,15 +733,11 @@ function Velvet:KeySystem(opts)
             return
         end
 
-        local valid = false
-        for _, k in keys do
-            if input == k then valid = true break end
-        end
-
-        if valid then
+        if checkKey(input) then
             statusLabel.Text = "Key accepted!"
             statusLabel.TextColor3 = theme.Success
-            pcall(function() writefile(saveName, input) end)
+            -- store hash, not the raw key (file leak doesn't expose key)
+            pcall(function() writefile(saveName, hashKey(input)) end)
             passed = true
             tween(card, {
                 Size = UDim2.new(0, mobile and 320 or 340, 0, 0),
@@ -601,7 +749,18 @@ function Velvet:KeySystem(opts)
                 safecall("KeySystem", cb, true)
             end)
         else
-            statusLabel.Text = "Invalid key!"
+            attempts = attempts + 1
+            if attempts >= maxAttempts then
+                locked = true
+                statusLabel.Text = `Too many attempts. Locked.`
+                statusLabel.TextColor3 = theme.Error
+                keyInput.TextEditable = false
+                submitBtn.Active = false
+                tween(submitBtn, {BackgroundTransparency = 0.6}, 0.2)
+                if opts.OnLockout then pcall(opts.OnLockout) end
+                return
+            end
+            statusLabel.Text = `Invalid key ({attempts}/{maxAttempts})`
             statusLabel.TextColor3 = theme.Error
             -- shake
             local orig = card.Position

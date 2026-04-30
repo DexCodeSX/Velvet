@@ -61,10 +61,16 @@ local function conn(signal, fn)
 end
 
 -- ── persistence ──────────────────────────────────────────
+-- pin entries: { type = "toggle", id = "..." } or { type = "button", label = "..." }
+-- buttons are NOT persisted (callbacks aren't serializable), only toggles save
 
 local function savePins()
     pcall(function()
-        writefile(QuickBar._file, HttpService:JSONEncode(QuickBar._pins))
+        local saveable = {}
+        for _, p in QuickBar._pins do
+            if p.type == "toggle" then table.insert(saveable, p.id) end
+        end
+        writefile(QuickBar._file, HttpService:JSONEncode(saveable))
     end)
 end
 
@@ -73,41 +79,55 @@ local function loadPins()
         if isfile(QuickBar._file) then
             local raw = readfile(QuickBar._file)
             local data = HttpService:JSONDecode(raw)
-            if type(data) == "table" then QuickBar._pins = data end
+            if type(data) == "table" then
+                local out = {}
+                for _, id in data do
+                    if type(id) == "string" then
+                        table.insert(out, { type = "toggle", id = id })
+                    end
+                end
+                QuickBar._pins = out
+            end
         end
     end)
 end
 
 -- ── cell builder ─────────────────────────────────────────
 
-local function buildCell(bar, id, idx, theme, mobile)
+local function buildCell(bar, pin, idx, theme, mobile)
     local cellW = mobile and 52 or 56
     local lib = QuickBar.Library
 
     local cell = Instance.new("Frame")
-    cell.Name = "Cell_" .. id
+    cell.Name = "Cell_" .. (pin.id or pin.label or tostring(idx))
     cell.Size = UDim2.new(0, cellW, 1, 0)
     cell.BackgroundTransparency = 1
     cell.ZIndex = 101
     cell.LayoutOrder = idx
     cell.Parent = bar
 
-    -- toggle dot
-    local dotSize = mobile and 14 or 12
-    local dot = Instance.new("Frame")
-    dot.Size = UDim2.new(0, dotSize, 0, dotSize)
-    dot.Position = UDim2.new(0.5, -dotSize/2, 0, mobile and 5 or 4)
-    dot.ZIndex = 102
-    dot.BorderSizePixel = 0
-    dot.Parent = cell
-    corner(dot, dotSize/2)
+    -- visual indicator (dot for toggle, square for button)
+    local indSize = mobile and 14 or 12
+    local ind = Instance.new("Frame")
+    ind.Size = UDim2.new(0, indSize, 0, indSize)
+    ind.Position = UDim2.new(0.5, -indSize/2, 0, mobile and 5 or 4)
+    ind.ZIndex = 102
+    ind.BorderSizePixel = 0
+    ind.Parent = cell
+    if pin.type == "button" then
+        corner(ind, 3)
+        ind.BackgroundColor3 = theme.Accent
+    else
+        corner(ind, indSize/2)
+    end
 
     -- label
+    local labelText = pin.type == "button" and (pin.label or "Btn") or pin.id
     local lbl = Instance.new("TextLabel")
     lbl.Size = UDim2.new(1, -4, 0, 10)
     lbl.Position = UDim2.new(0, 2, 1, mobile and -13 or -12)
     lbl.BackgroundTransparency = 1
-    lbl.Text = string.sub(id, 1, 6)
+    lbl.Text = string.sub(labelText, 1, 6)
     lbl.TextSize = mobile and 8 or 7
     lbl.Font = Enum.Font.Gotham
     lbl.TextColor3 = theme.TextMuted
@@ -115,17 +135,19 @@ local function buildCell(bar, id, idx, theme, mobile)
     lbl.ZIndex = 102
     lbl.Parent = cell
 
-    -- set visual state
     local function refresh()
-        local val = lib.Flags[id]
-        dot.BackgroundColor3 = val and theme.Accent or theme.TextMuted
+        if pin.type == "toggle" then
+            local val = lib.Flags[pin.id]
+            ind.BackgroundColor3 = val and theme.Accent or theme.TextMuted
+        end
     end
     refresh()
 
-    -- listen for changes from main UI
-    lib:OnFlagChanged(id, refresh)
+    if pin.type == "toggle" then
+        lib:OnFlagChanged(pin.id, refresh)
+    end
 
-    return { frame = cell, dot = dot, label = lbl, id = id, refresh = refresh }
+    return { frame = cell, ind = ind, label = lbl, pin = pin, refresh = refresh }
 end
 
 -- ── bar layout ───────────────────────────────────────────
@@ -194,8 +216,8 @@ local function rebuildBar()
 
     QuickBar._openCellW = openW
 
-    for i, id in QuickBar._pins do
-        local c = buildCell(bar, id, i, theme, mobile)
+    for i, pin in QuickBar._pins do
+        local c = buildCell(bar, pin, i, theme, mobile)
         table.insert(QuickBar._cells, c)
     end
 
@@ -252,15 +274,19 @@ local function setupDrag(bar)
                 local win = QuickBar.Window
                 if win then win:Show() end
             else
-                -- tapped a toggle cell
+                -- tapped a pin cell
                 local toggleX = relX - openW
                 local idx = math.floor(toggleX / cellW) + 1
-                if idx >= 1 and idx <= #QuickBar._pins then
-                    local id = QuickBar._pins[idx]
+                local pin = QuickBar._pins[idx]
+                if pin then
                     local lib = QuickBar.Library
-                    local elem = lib._elements and lib._elements[id]
-                    if elem and elem.Set and elem.Get then
-                        elem:Set(not elem:Get())
+                    if pin.type == "toggle" then
+                        local elem = lib._elements and lib._elements[pin.id]
+                        if elem and elem.Set and elem.Get then
+                            elem:Set(not elem:Get())
+                        end
+                    elseif pin.type == "button" and pin.cb then
+                        pcall(pin.cb)
                     end
                 end
             end
@@ -355,24 +381,44 @@ function QuickBar:Bind(library, window, opts)
     return self
 end
 
+local function findPinIdx(target)
+    for i, p in QuickBar._pins do
+        if p.type == "toggle" and p.id == target then return i end
+        if p.type == "button" and p.label == target then return i end
+    end
+    return nil
+end
+
+local function checkMax()
+    if #QuickBar._pins >= QuickBar._maxPins then
+        if QuickBar.Library and QuickBar.Library.Notify then
+            QuickBar.Library:Notify({ Title = "Quick Bar", Content = `Max {QuickBar._maxPins} pins`, Duration = 2, Type = "warning" })
+        end
+        return false
+    end
+    return true
+end
+
 function QuickBar:Pin(id)
     if not self.Library then return end
-    if table.find(self._pins, id) then return end
-    if #self._pins >= self._maxPins then
-        if self.Library.Notify then
-            self.Library:Notify({ Title = "Quick Bar", Content = `Max {self._maxPins} pins`, Duration = 2, Type = "warning" })
-        end
-        return
-    end
-    -- only allow pinning toggles (boolean flags)
+    if findPinIdx(id) then return end
+    if not checkMax() then return end
     if typeof(self.Library.Flags[id]) ~= "boolean" then return end
-    table.insert(self._pins, id)
+    table.insert(self._pins, { type = "toggle", id = id })
     savePins()
     rebuildBar()
 end
 
-function QuickBar:Unpin(id)
-    local idx = table.find(self._pins, id)
+function QuickBar:PinButton(label, callback)
+    if not self.Library or not callback then return end
+    if findPinIdx(label) then return end
+    if not checkMax() then return end
+    table.insert(self._pins, { type = "button", label = label, cb = callback })
+    rebuildBar()
+end
+
+function QuickBar:Unpin(idOrLabel)
+    local idx = findPinIdx(idOrLabel)
     if not idx then return end
     table.remove(self._pins, idx)
     savePins()
@@ -380,11 +426,13 @@ function QuickBar:Unpin(id)
 end
 
 function QuickBar:GetPins()
-    return table.clone(self._pins)
+    local out = {}
+    for _, p in self._pins do table.insert(out, p.id or p.label) end
+    return out
 end
 
-function QuickBar:IsPinned(id)
-    return table.find(self._pins, id) ~= nil
+function QuickBar:IsPinned(idOrLabel)
+    return findPinIdx(idOrLabel) ~= nil
 end
 
 function QuickBar:Destroy()

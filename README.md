@@ -3,12 +3,12 @@
 
   <p>
     <b>Premium dark glassmorphism UI library for Roblox</b><br/>
-    Single loadstring · PC + Mobile · 5 themes · 1700+ icons
+    Single loadstring · PC + Mobile · 9 themes · 1700+ icons · Quick Bar · Profiles · Notification History
   </p>
 
   <p>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-7c5cfc?style=flat-square" alt="MIT"></a>
-    <img src="https://img.shields.io/badge/version-3.1-7c5cfc?style=flat-square" alt="v3.1">
+    <img src="https://img.shields.io/badge/version-3.2-7c5cfc?style=flat-square" alt="v3.2">
     <img src="https://img.shields.io/badge/Lua-5.1_Luau-2C2D72?style=flat-square&logo=lua" alt="Luau">
     <img src="https://img.shields.io/badge/mobile-ready-3ce0c8?style=flat-square" alt="Mobile">
     <a href="https://github.com/DexCodeSX/Velvet/stargazers"><img src="https://img.shields.io/github/stars/DexCodeSX/Velvet?style=flat-square&color=7c5cfc" alt="Stars"></a>
@@ -37,12 +37,17 @@ local Velvet = loadstring(game:HttpGet("https://raw.githubusercontent.com/DexCod
 ### Optional addons
 
 ```lua
-local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/DexCodeSX/Velvet/main/addons/SaveManager.lua"))()
-local ThemeManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/DexCodeSX/Velvet/main/addons/ThemeManager.lua"))()
+local SaveManager   = loadstring(game:HttpGet("https://raw.githubusercontent.com/DexCodeSX/Velvet/main/addons/SaveManager.lua"))()
+local ThemeManager  = loadstring(game:HttpGet("https://raw.githubusercontent.com/DexCodeSX/Velvet/main/addons/ThemeManager.lua"))()
+local QuickBar      = loadstring(game:HttpGet("https://raw.githubusercontent.com/DexCodeSX/Velvet/main/addons/QuickBar.lua"))()
+local NotifHistory  = loadstring(game:HttpGet("https://raw.githubusercontent.com/DexCodeSX/Velvet/main/addons/NotificationHistory.lua"))()
 
 SaveManager:Bind(Velvet, "MyConfig")
 ThemeManager:Bind(Velvet)
 ThemeManager:LoadSaved()
+
+QuickBar:Bind(Velvet, Window, { MaxPins = 5 })
+NotifHistory:Bind(Velvet, Window, { MaxEntries = 50 })
 ```
 
 ## Quick Start
@@ -119,7 +124,7 @@ Toggle · Slider · Button · Dropdown (single + multi + searchable) · Input ·
 - Pulsing logo halo
 - Quint + Back easing for premium microinteractions (~220ms)
 - Live theme remap (no reload needed)
-- 5 built-in themes: **Midnight** · **Ocean** · **Rose** · **Emerald** · **Sunset**
+- 9 built-in themes: **Midnight**, **Catppuccin**, **Tokyo Night**, **Dracula**, **Nord**, **Rose Pine**, **Cyberpunk**, **Monochrome**, **Ocean**
 - Custom theme support
 
 ### Robustness
@@ -205,16 +210,30 @@ Velvet:Notify({
 
 ### Key system
 
+Hardened in v3.2. Saved key file stores a SHA-256 hash bound to the user's HWID,
+so leaking the file does not leak the key. Lockout after `MaxAttempts` failed tries.
+
 ```lua
 Velvet:KeySystem({
     Title = "Velvet",
     SubTitle = "premium access required",
     Keys = { "velvet-2026", "let-me-in" },
-    SaveKey = "VelvetKey.txt", -- optional, remembers passing key
-    Note = "key auto saves",
-    DiscordInvite = "https://discord.gg/velvet",
+    -- or pre-hash your keys to keep them out of source:
+    -- HashedKeys = { "abc123...", "def456..." },
+    SaveKey = "VelvetKey.txt",
+    MaxAttempts = 5,
+    GetKeyLink = "https://discord.gg/velvet",
     Callback = function(success) end,
+    OnLockout = function() game.Players.LocalPlayer:Kick("locked") end,
 })
+```
+
+To pre-hash a key for `HashedKeys`:
+
+```lua
+local hwid = (gethwid and gethwid()) or ""
+local hash = crypt.hash("YOUR_KEY::velvet::" .. hwid, "sha256")
+print(hash) -- paste into your script
 ```
 
 ### Watermark
@@ -243,10 +262,58 @@ SaveManager:Import(str)
 ```lua
 ThemeManager:Bind(Velvet)
 ThemeManager:SetTheme("Ocean")
-ThemeManager:GetThemes() -- { "Midnight", "Ocean", "Rose", "Emerald", "Sunset" }
+ThemeManager:GetThemes()
 ThemeManager:AddTheme("Custom", { Base = ..., Accent = ..., ... })
 ThemeManager:LoadSaved()
 ```
+
+### QuickBar (v3.2)
+
+Floating draggable strip with pinned toggles. Visible when the main window is hidden.
+One tap flips the toggle, no need to open the full UI. Built-in open-window button.
+
+```lua
+QuickBar:Bind(Velvet, Window, { MaxPins = 5 })
+QuickBar:Pin("AimbotEnabled")
+QuickBar:PinButton("Reset", function() resetCharacter() end)
+QuickBar:Unpin("AimbotEnabled")
+QuickBar:GetPins()
+QuickBar:Destroy()
+```
+
+Drag-vs-tap is auto-detected (delta > 5px = drag, otherwise tap). Pins persist across sessions.
+
+### Config Profiles (v3.2)
+
+Named presets for instant loadout switching. Tap a profile name, every flag flips.
+
+```lua
+SaveManager:SaveProfile("PvP")
+SaveManager:LoadProfile("PvP")
+SaveManager:DeleteProfile("PvP")
+SaveManager:RenameProfile("old", "new")
+SaveManager:GetProfiles()
+SaveManager:GetActiveProfile()
+
+-- drop a full UI into any section
+SaveManager:BuildProfileUI(section)
+```
+
+### NotificationHistory (v3.2)
+
+Bell icon in the header, unread badge, slide-out scrollable panel.
+
+```lua
+NotifHistory:Bind(Velvet, Window, {
+    MaxEntries = 50,
+    ShowTimestamp = true,
+})
+NotifHistory:GetEntries()
+NotifHistory:Clear()
+NotifHistory:GetUnreadCount()
+```
+
+Captures every `Velvet:Notify` call automatically.
 
 ## Window options
 
@@ -271,10 +338,18 @@ ThemeManager:LoadSaved()
 | Theme | Accent | Mood |
 |-------|--------|------|
 | **Midnight** | violet `#7c5cfc` | default, deep black |
+| **Catppuccin** | mauve `#cba6f7` | pastel dark, devs love it |
+| **Tokyo Night** | sky `#7dcfff` | iconic editor theme |
+| **Dracula** | purple `#bd93f9` | the classic |
+| **Nord** | frost `#88c0d0` | minimal, arctic |
+| **Rose Pine** | rose `#ebbcba` | soft, warm |
+| **Cyberpunk** | neon `#00ffc8` | hot pink + cyan |
+| **Monochrome** | grayscale | clean, no color |
 | **Ocean** | blue `#328cff` | navy, cool |
-| **Rose** | pink `#f0509e` | warm dark |
-| **Emerald** | green `#32d278` | forest |
-| **Sunset** | orange `#ff8232` | warm brown |
+
+```lua
+Velvet:SetTheme(Velvet.Themes.Catppuccin)
+```
 
 ## Roadmap
 
